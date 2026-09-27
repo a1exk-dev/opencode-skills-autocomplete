@@ -1,3 +1,5 @@
+import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui";
+
 export function sortSkills<Skill extends { name: string }>(
     skills: readonly Skill[],
 ): Skill[] {
@@ -42,3 +44,29 @@ export function parseHotkey(
 export function pasteText(name: string): string {
     return `/${name} `;
 }
+
+const tui: TuiPlugin = async (api: TuiPluginApi) => {
+    const { data: skills } = await api.client.app.skills<true>(
+        {},
+        {
+            throwOnError: true,
+        },
+    );
+    const paths = {
+        directory: api.state.path.directory,
+        worktree: api.state.path.worktree,
+    };
+    const commands = sortSkills(skills).map((skill) => ({
+        namespace: "palette",
+        name: `skill.${skill.name}`,
+        title: skill.name,
+        desc: originTag(skill.location, paths),
+        slashName: skill.name,
+        run: async () => {
+            await api.client.tui.appendPrompt({ text: pasteText(skill.name) });
+        },
+    }));
+    api.keymap.registerLayer({ commands });
+};
+
+export default { tui };

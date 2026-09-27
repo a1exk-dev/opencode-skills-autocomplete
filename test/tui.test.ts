@@ -1,5 +1,11 @@
+import type { TuiPluginApi, TuiPluginMeta } from "@opencode-ai/plugin/tui";
 import { describe, expect, it } from "vitest";
-import { originTag, parseHotkey, pasteText, sortSkills } from "../src/tui";
+import plugin, {
+    originTag,
+    parseHotkey,
+    pasteText,
+    sortSkills,
+} from "../src/tui";
 
 describe("sortSkills", () => {
     it("sorts names A to Z case-insensitively", () => {
@@ -148,5 +154,94 @@ describe("pasteText", () => {
 
     it("keeps the name verbatim", () => {
         expect(pasteText("my-skill_2")).toBe("/my-skill_2 ");
+    });
+});
+
+describe("plugin entry", () => {
+    type Skill = {
+        name: string;
+        location: string;
+    };
+    type RegisteredCommand = {
+        name: string;
+        title?: string;
+        desc?: string;
+        slashName?: string;
+        run: (ctx?: unknown) => unknown;
+    };
+    type RegisteredLayer = {
+        commands?: readonly RegisteredCommand[];
+        bindings?: unknown;
+    };
+
+    function mockApi(skills: Skill[]) {
+        const layers: RegisteredLayer[] = [];
+        const appended: string[] = [];
+        const api = {
+            client: {
+                app: {
+                    skills: async () => ({ data: skills }),
+                },
+                tui: {
+                    appendPrompt: async ({ text }: { text: string }) => {
+                        appended.push(text);
+                    },
+                    submitPrompt: async () => {
+                        appended.push("<submitted>");
+                    },
+                },
+            },
+            state: { path: { directory: "/repo/src", worktree: "/repo" } },
+            keymap: {
+                registerLayer: (layer: RegisteredLayer) => {
+                    layers.push(layer);
+                    return () => {};
+                },
+            },
+        } as unknown as TuiPluginApi;
+        return { api, layers, appended };
+    }
+
+    const skills: Skill[] = [
+        { name: "zeta", location: "/home/u/.claude/skills/zeta/SKILL.md" },
+        { name: "alpha", location: "/repo/.opencode/skills/alpha/SKILL.md" },
+        { name: "Beta", location: "<built-in>" },
+    ];
+
+    it("registers one palette command per skill, A to Z, with origin tags", async () => {
+        const { api, layers } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        expect(layers).toHaveLength(1);
+        const commands = layers[0].commands ?? [];
+        expect(commands.map((command) => command.slashName)).toEqual([
+            "alpha",
+            "Beta",
+            "zeta",
+        ]);
+        expect(commands.map((command) => command.name)).toEqual([
+            "skill.alpha",
+            "skill.Beta",
+            "skill.zeta",
+        ]);
+        expect(commands.map((command) => command.title)).toEqual([
+            "alpha",
+            "Beta",
+            "zeta",
+        ]);
+        expect(commands.map((command) => command.desc)).toEqual([
+            "(project)",
+            "(built-in)",
+            "(user)",
+        ]);
+    });
+
+    it("inserts /name with a trailing space on select and never submits", async () => {
+        const { api, layers, appended } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const beta = (layers[0].commands ?? []).find(
+            (command) => command.slashName === "Beta",
+        );
+        await beta?.run();
+        expect(appended).toEqual(["/Beta "]);
     });
 });
