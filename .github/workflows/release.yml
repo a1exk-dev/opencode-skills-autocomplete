@@ -36,7 +36,11 @@ jobs:
                   fi
             - name: Tag the merge commit
               if: steps.check.outputs.status == 'release'
-              run: git tag -a "v${{ steps.check.outputs.version }}" -m "v${{ steps.check.outputs.version }}" && git push origin "v${{ steps.check.outputs.version }}"
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git tag -a "v${{ steps.check.outputs.version }}" -m "v${{ steps.check.outputs.version }}"
+                  git push origin "v${{ steps.check.outputs.version }}"
             - name: Create GitHub Release
               if: steps.check.outputs.status == 'release'
               run: |
