@@ -8,4 +8,5 @@
 
 ## Build branch state
 
-- `develop` does not carry the scaffold or later ticket commits; the maintainer directs work to be committed to the current feature branch (`feature/scaffold-project-base`), not merged to `develop` by the agent. Branch topology diverges from `docs/agents/git-workflow.md` until the maintainer syncs it.
+- Maintainer policy (2026-09-27): merge completed, CI-green ticket work into `develop` per ticket, then branch the next ticket from `develop`. First execution: PR #1 (squash) → `develop` at `c319b9f`. Per ticket: work on `feature/<ticket-slug>` off `develop`, push, PR to `develop`, squash-merge once the CI `check` job is green, then move on.
+- Branch protection (no direct pushes to `main`/`develop`) is not yet configured on the repo; direct pushes technically work until it is — prefer the PR path anyway.
