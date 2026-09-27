@@ -1,0 +1,33 @@
+name: Bug report
+description: Report something that does not work
+labels:
+    - needs-triage
+body:
+    - type: textarea
+      id: what-happened
+      attributes:
+          label: What happened?
+          description: What did you expect, and what did you get instead?
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          description: The exact steps, including the opencode config snippet if the plugin is involved.
+      validations:
+          required: true
+    - type: input
+      id: opencode-version
+      attributes:
+          label: opencode version
+          description: Output of `opencode --version`.
+      validations:
+          required: true
+    - type: input
+      id: plugin-version
+      attributes:
+          label: Plugin version
+          description: The version of opencode-skills-autocomplete in use.
+      validations:
+          required: true
