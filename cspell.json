@@ -1,0 +1,19 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "ignorePaths": ["dist/", "coverage/", "node_modules/", "bun.lock"],
+    "ignoreRegExpList": ["\\b(?:PVT|PVTF|PVTI)[A-Za-z0-9_-]*\\b"],
+    "words": [
+        "actioned",
+        "biome",
+        "hotfixes",
+        "mattpocock",
+        "opencode",
+        "pocock",
+        "triaging",
+        "tsconfig",
+        "vitest",
+        "wayfinder",
+        "wayfinding"
+    ]
+}
