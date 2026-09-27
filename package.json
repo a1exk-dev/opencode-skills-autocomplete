@@ -30,6 +30,8 @@
     "devDependencies": {
         "@biomejs/biome": "^2.5.14",
         "@opencode-ai/plugin": "^1.18.32",
+        "@opentui/keymap": "0.4.5",
+        "@opentui/solid": "0.4.5",
         "cspell": "^10.3.4",
         "typescript": "^7.0.2",
         "vitest": "^5.0.2"
