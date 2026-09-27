@@ -1,0 +1,152 @@
+import { describe, expect, it } from "vitest";
+import { originTag, parseHotkey, pasteText, sortSkills } from "../src/tui";
+
+describe("sortSkills", () => {
+    it("sorts names A to Z case-insensitively", () => {
+        const skills = [{ name: "zeta" }, { name: "Alpha" }, { name: "beta" }];
+        expect(sortSkills(skills).map((skill) => skill.name)).toEqual([
+            "Alpha",
+            "beta",
+            "zeta",
+        ]);
+    });
+
+    it("keeps input order for names that differ only by case", () => {
+        const skills = [{ name: "apple" }, { name: "Apple" }];
+        expect(sortSkills(skills).map((skill) => skill.name)).toEqual([
+            "apple",
+            "Apple",
+        ]);
+    });
+
+    it("does not mutate the input array", () => {
+        const skills = [{ name: "b" }, { name: "a" }];
+        sortSkills(skills);
+        expect(skills.map((skill) => skill.name)).toEqual(["b", "a"]);
+    });
+
+    it("returns the same skill objects, in the sorted order", () => {
+        const skills = [
+            { name: "b", location: "/x/b" },
+            { name: "a", location: "/x/a" },
+        ];
+        const sorted = sortSkills(skills);
+        expect(sorted[0]).toBe(skills[1]);
+        expect(sorted[1]).toBe(skills[0]);
+    });
+});
+
+describe("originTag", () => {
+    const paths = { directory: "/repo/src", worktree: "/repo" };
+
+    it("classifies the built-in marker as (built-in)", () => {
+        expect(originTag("<built-in>", paths)).toBe("(built-in)");
+    });
+
+    it("classifies a location under the worktree as (project)", () => {
+        expect(originTag("/repo/.opencode/skills/demo/SKILL.md", paths)).toBe(
+            "(project)",
+        );
+    });
+
+    it("classifies a location under the directory as (project)", () => {
+        expect(originTag("/repo/src/.claude/skills/demo/SKILL.md", paths)).toBe(
+            "(project)",
+        );
+    });
+
+    it("does not treat a sibling of the worktree as inside it", () => {
+        expect(
+            originTag("/repo-backup/.opencode/skills/demo/SKILL.md", paths),
+        ).toBe("(user)");
+    });
+
+    it("classifies home config locations as (user)", () => {
+        expect(
+            originTag(
+                "/home/a1exk/.config/opencode/skills/demo/SKILL.md",
+                paths,
+            ),
+        ).toBe("(user)");
+    });
+
+    it("classifies home skill locations as (user)", () => {
+        expect(
+            originTag("/home/a1exk/.claude/skills/demo/SKILL.md", paths),
+        ).toBe("(user)");
+        expect(
+            originTag("/home/a1exk/.agents/skills/demo/SKILL.md", paths),
+        ).toBe("(user)");
+    });
+});
+
+describe("parseHotkey", () => {
+    it("defaults to ctrl+k when options are absent", () => {
+        expect(parseHotkey(undefined)).toEqual({ ok: true, hotkey: "ctrl+k" });
+        expect(parseHotkey({})).toEqual({ ok: true, hotkey: "ctrl+k" });
+        expect(parseHotkey({ hotkey: undefined })).toEqual({
+            ok: true,
+            hotkey: "ctrl+k",
+        });
+    });
+
+    it("accepts valid keybind strings", () => {
+        expect(parseHotkey({ hotkey: "ctrl+k" })).toEqual({
+            ok: true,
+            hotkey: "ctrl+k",
+        });
+        expect(parseHotkey({ hotkey: "ctrl+shift+k" })).toEqual({
+            ok: true,
+            hotkey: "ctrl+shift+k",
+        });
+        expect(parseHotkey({ hotkey: "mod+enter" })).toEqual({
+            ok: true,
+            hotkey: "mod+enter",
+        });
+        expect(parseHotkey({ hotkey: "enter" })).toEqual({
+            ok: true,
+            hotkey: "enter",
+        });
+        expect(parseHotkey({ hotkey: "tab" })).toEqual({
+            ok: true,
+            hotkey: "tab",
+        });
+    });
+
+    it("trims whitespace around the keybind", () => {
+        expect(parseHotkey({ hotkey: "  ctrl+k  " })).toEqual({
+            ok: true,
+            hotkey: "ctrl+k",
+        });
+    });
+
+    it("rejects non-string values as a registration failure", () => {
+        expect(parseHotkey({ hotkey: 42 })).toMatchObject({
+            ok: false,
+            error: expect.any(String),
+        });
+        expect(parseHotkey({ hotkey: null })).toMatchObject({
+            ok: false,
+            error: expect.any(String),
+        });
+    });
+
+    it("passes any string through to the keymap for validation", () => {
+        for (const hotkey of ["", "ctrl", "k+k", "not a keybind"]) {
+            expect(parseHotkey({ hotkey }), hotkey).toEqual({
+                ok: true,
+                hotkey: hotkey.trim(),
+            });
+        }
+    });
+});
+
+describe("pasteText", () => {
+    it("is the skill name with a leading / and exactly one trailing space", () => {
+        expect(pasteText("tdd")).toBe("/tdd ");
+    });
+
+    it("keeps the name verbatim", () => {
+        expect(pasteText("my-skill_2")).toBe("/my-skill_2 ");
+    });
+});
