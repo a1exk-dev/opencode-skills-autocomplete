@@ -45,7 +45,50 @@ export function pasteText(name: string): string {
     return `/${name} `;
 }
 
-const tui: TuiPlugin = async (api: TuiPluginApi) => {
+const PALETTE_COMMAND = "command.palette.show";
+
+function chordBinding(
+    api: Pick<TuiPluginApi, "keymap" | "tuiConfig" | "ui">,
+    options: Record<string, unknown> | undefined,
+): { key: string; cmd: string } | undefined {
+    const parsed = parseHotkey(options);
+    if (!parsed.ok) {
+        api.ui.toast({
+            variant: "warning",
+            message: `${parsed.error}; chord skipped, the / menu still works`,
+        });
+        return undefined;
+    }
+    const { keymap, tuiConfig } = api;
+    // ponytail: exact string compare misses case-variant duplicates like "Ctrl+K" vs "ctrl+k"; normalize via keymap.formatKey if that matters
+    if (
+        tuiConfig.keybinds.bindings.some(
+            (binding) => binding.key === parsed.hotkey,
+        )
+    ) {
+        api.ui.toast({
+            variant: "warning",
+            message: `hotkey "${parsed.hotkey}" is already bound; chord skipped, the / menu still works`,
+        });
+        return undefined;
+    }
+    let parts: readonly unknown[];
+    try {
+        parts = keymap.parseKeySequence(parsed.hotkey);
+    } catch {
+        parts = [];
+    }
+    if (parts.length === 0) {
+        api.ui.toast({
+            variant: "warning",
+            message: `hotkey "${parsed.hotkey}" is not a valid keybind; chord skipped, the / menu still works`,
+        });
+        return undefined;
+    }
+    return { key: parsed.hotkey, cmd: PALETTE_COMMAND };
+}
+
+const tui: TuiPlugin = async (api, options) => {
     const { data: skills } = await api.client.app.skills<true>(
         {},
         {
@@ -66,7 +109,8 @@ const tui: TuiPlugin = async (api: TuiPluginApi) => {
             await api.client.tui.appendPrompt({ text: pasteText(skill.name) });
         },
     }));
-    api.keymap.registerLayer({ commands });
+    const binding = chordBinding(api, options);
+    api.keymap.registerLayer({ commands, bindings: binding ? [binding] : [] });
 };
 
 export default { tui };

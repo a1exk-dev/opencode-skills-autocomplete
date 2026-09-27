@@ -169,14 +169,22 @@ describe("plugin entry", () => {
         slashName?: string;
         run: (ctx?: unknown) => unknown;
     };
+    type RegisteredBinding = {
+        key: string;
+        cmd?: string;
+    };
     type RegisteredLayer = {
         commands?: readonly RegisteredCommand[];
-        bindings?: unknown;
+        bindings?: readonly RegisteredBinding[];
     };
 
-    function mockApi(skills: Skill[]) {
+    function mockApi(
+        skills: Skill[],
+        extra: { boundKeys?: string[]; invalidKeys?: string[] } = {},
+    ) {
         const layers: RegisteredLayer[] = [];
         const appended: string[] = [];
+        const toasts: { variant?: string; message: string }[] = [];
         const api = {
             client: {
                 app: {
@@ -192,14 +200,35 @@ describe("plugin entry", () => {
                 },
             },
             state: { path: { directory: "/repo/src", worktree: "/repo" } },
+            tuiConfig: {
+                keybinds: {
+                    bindings: (extra.boundKeys ?? []).map((key) => ({
+                        key,
+                        cmd: "command.builtin",
+                    })),
+                },
+            },
+            ui: {
+                toast: (input: { variant?: string; message: string }) => {
+                    toasts.push(input);
+                },
+            },
             keymap: {
                 registerLayer: (layer: RegisteredLayer) => {
                     layers.push(layer);
                     return () => {};
                 },
+                parseKeySequence: (key: string) => {
+                    if (key === "")
+                        throw new Error(
+                            "Invalid key sequence: sequence cannot be empty",
+                        );
+                    if (extra.invalidKeys?.includes(key)) return [];
+                    return [{ stroke: {}, display: key, match: {} }];
+                },
             },
         } as unknown as TuiPluginApi;
-        return { api, layers, appended };
+        return { api, layers, appended, toasts };
     }
 
     const skills: Skill[] = [
@@ -243,5 +272,82 @@ describe("plugin entry", () => {
         );
         await beta?.run();
         expect(appended).toEqual(["/Beta "]);
+    });
+
+    it("binds the default ctrl+k chord to the palette command", async () => {
+        const { api, layers } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        expect(layers[0].bindings).toEqual([
+            { key: "ctrl+k", cmd: "command.palette.show" },
+        ]);
+        expect(layers[0].commands ?? []).toHaveLength(3);
+    });
+
+    it("uses the hotkey option as the chord key", async () => {
+        const { api, layers } = mockApi(skills);
+        await plugin.tui(api, { hotkey: "ctrl+shift+k" }, {} as TuiPluginMeta);
+        expect(layers[0].bindings).toEqual([
+            { key: "ctrl+shift+k", cmd: "command.palette.show" },
+        ]);
+    });
+
+    it("warns once and skips the chord when the key is already bound", async () => {
+        const { api, layers, toasts } = mockApi(skills, {
+            boundKeys: ["ctrl+k"],
+        });
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        expect(toasts).toEqual([
+            {
+                variant: "warning",
+                message:
+                    'hotkey "ctrl+k" is already bound; chord skipped, the / menu still works',
+            },
+        ]);
+        expect(layers[0].bindings ?? []).toHaveLength(0);
+        expect(layers[0].commands ?? []).toHaveLength(3);
+    });
+
+    it("warns once and skips the chord for an unparseable hotkey", async () => {
+        const { api, layers, toasts } = mockApi(skills);
+        await plugin.tui(api, { hotkey: "   " }, {} as TuiPluginMeta);
+        expect(toasts).toEqual([
+            {
+                variant: "warning",
+                message:
+                    'hotkey "" is not a valid keybind; chord skipped, the / menu still works',
+            },
+        ]);
+        expect(layers[0].bindings ?? []).toHaveLength(0);
+        expect(layers[0].commands ?? []).toHaveLength(3);
+    });
+
+    it("warns once and skips the chord for a hotkey with an unknown token", async () => {
+        const { api, layers, toasts } = mockApi(skills, {
+            invalidKeys: ["mod+k"],
+        });
+        await plugin.tui(api, { hotkey: "mod+k" }, {} as TuiPluginMeta);
+        expect(toasts).toEqual([
+            {
+                variant: "warning",
+                message:
+                    'hotkey "mod+k" is not a valid keybind; chord skipped, the / menu still works',
+            },
+        ]);
+        expect(layers[0].bindings ?? []).toHaveLength(0);
+        expect(layers[0].commands ?? []).toHaveLength(3);
+    });
+
+    it("warns once and skips the chord when the hotkey option is not a string", async () => {
+        const { api, layers, toasts } = mockApi(skills);
+        await plugin.tui(api, { hotkey: 42 }, {} as TuiPluginMeta);
+        expect(toasts).toEqual([
+            {
+                variant: "warning",
+                message:
+                    "hotkey must be a string; chord skipped, the / menu still works",
+            },
+        ]);
+        expect(layers[0].bindings ?? []).toHaveLength(0);
+        expect(layers[0].commands ?? []).toHaveLength(3);
     });
 });
