@@ -1,0 +1,43 @@
+name: Release
+
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+jobs:
+    release-please:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+        outputs:
+            released: ${{ steps.release.outputs.released }}
+        steps:
+            - uses: google-github-actions/release-please-action@v4
+              id: release
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  release-type: node
+
+    publish:
+        needs: release-please
+        if: ${{ needs.release-please.outputs.released == 'true' }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+            - run: bun install --frozen-lockfile
+            - run: bun run build
+            - name: Exchange OIDC token for npm token
+              uses: JS-SDK/npm-token@v1
+              id: npm-token
+            - name: Publish to npm
+              run: bun publish --access public --provenance
+              env:
+                  NODE_AUTH_TOKEN: ${{ steps.npm-token.outputs.token }}

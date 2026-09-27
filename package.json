@@ -1,0 +1,37 @@
+{
+    "name": "opencode-skills-autocomplete",
+    "version": "0.0.0",
+    "description": "opencode plugin that lists every available skill as a row in the / menu and adds a configurable chord shortcut to the skill list.",
+    "type": "module",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/a1exk-dev/opencode-skills-autocomplete.git"
+    },
+    "keywords": [
+        "opencode",
+        "plugin",
+        "skills",
+        "autocomplete"
+    ],
+    "exports": {
+        "./tui": "./dist/tui.js"
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "bun build src/tui.ts --target bun --format esm --outdir dist && tsc -p tsconfig.json --emitDeclarationOnly",
+        "check": "biome check .",
+        "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+        "test": "vitest run",
+        "spell": "cspell \"**/*.md\""
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.14",
+        "@opencode-ai/plugin": "^1.18.32",
+        "cspell": "^10.3.4",
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.2"
+    }
+}
