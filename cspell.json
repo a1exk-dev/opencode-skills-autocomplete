@@ -5,8 +5,11 @@
     "ignoreRegExpList": ["\\b(?:PVT|PVTF|PVTI)[A-Za-z0-9_-]*\\b"],
     "words": [
         "actioned",
+        "automatable",
         "biome",
         "hotfixes",
+        "keybind",
+        "keybinds",
         "mattpocock",
         "opencode",
         "pocock",
