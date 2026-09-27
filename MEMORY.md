@@ -10,4 +10,9 @@
 ## Build branch state
 
 - Maintainer policy (2026-09-27): merge completed, CI-green ticket work into `develop` per ticket, then branch the next ticket from `develop`. First execution: PR #1 (squash) → `develop` at `c319b9f`. Per ticket: work on `feature/<ticket-slug>` off `develop`, push, PR to `develop`, squash-merge once the CI `check` job is green, then move on.
-- Branch protection (no direct pushes to `main`/`develop`) is not yet configured on the repo; direct pushes technically work until it is — prefer the PR path anyway.
+- Branch protection: ruleset `protect-branches` (id 24085471) covers `main` + `develop`: pull request required (0 approvals), status check `check` required, administrators included, merge and square-merge methods only. Direct pushes to `main`/`develop` are rejected; prefer the PR path for everything.
+
+## Release infrastructure (2026-09-28)
+
+- No release-please: its first run computed 1.0.0 (we need 0.1.0) and its release PR is blocked by the repo's "GitHub Actions is not permitted to create pull requests" setting, which we are not changing. The current process is documented in `docs/agents/changelog.md` (agent) and `docs/releasing.md` (human).
+- npm OIDC trusted publisher shape: org `a1exk-dev`, repo `opencode-skills-autocomplete`, workflow `.github/workflows/release.yml`, `npm publish` allowed (audience `project:a1exk-dev:opencode-skills-autocomplete`). The npm name is claimed by a one-off `0.0.0` publish.

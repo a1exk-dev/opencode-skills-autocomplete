@@ -8,34 +8,87 @@ permissions:
     contents: read
 
 jobs:
-    release-please:
+    release:
         runs-on: ubuntu-latest
         permissions:
             contents: write
-            pull-requests: write
-        outputs:
-            released: ${{ steps.release.outputs.released }}
-        steps:
-            - uses: google-github-actions/release-please-action@v4
-              id: release
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  release-type: node
-
-    publish:
-        needs: release-please
-        if: ${{ needs.release-please.outputs.released == 'true' }}
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
             id-token: write
         steps:
             - uses: actions/checkout@v4
-            - uses: oven-sh/setup-bun@v2
-            - run: bun install --frozen-lockfile
-            - run: bun run build
-            - uses: actions/setup-node@v4
+              with:
+                  fetch-depth: 0
+                  fetch-tags: true
+            - name: Check for an unreleased version
+              id: check
+              run: |
+                  version=$(jq -r .version package.json)
+                  tag=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  if [ "$tag" = "v$version" ]; then
+                      echo "status=skip" >> "$GITHUB_OUTPUT"
+                      echo "v$version already tagged; nothing to release."
+                  else
+                      grep -q "^## $version " CHANGELOG.md || {
+                          echo "CHANGELOG.md has no entry for $version" >&2
+                          exit 1
+                      }
+                      echo "status=release" >> "$GITHUB_OUTPUT"
+                  fi
+            - name: Tag the merge commit
+              if: steps.check.outputs.status == 'release'
+              run: git tag -a "v${{ steps.check.outputs.version }}" -m "v${{ steps.check.outputs.version }}" && git push origin "v${{ steps.check.outputs.version }}"
+            - name: Create GitHub Release
+              if: steps.check.outputs.status == 'release'
+              run: |
+                  version=${{ steps.check.outputs.version }}
+                  awk -v v="$version" '
+                      found && /^## / { exit }
+                      !found && $0 ~ "^## " v " \\(" { found = 1 }
+                      found { print }
+                  ' CHANGELOG.md > release-notes.md
+                  [ -s release-notes.md ] || { echo "no changelog section for $version" >&2; exit 1; }
+                  gh release create "v$version" --title "v$version" --notes-file release-notes.md
+            - if: steps.check.outputs.status == 'release'
+              uses: oven-sh/setup-bun@v2
+            - if: steps.check.outputs.status == 'release'
+              run: bun install --frozen-lockfile
+            - if: steps.check.outputs.status == 'release'
+              run: bun run build
+            - if: steps.check.outputs.status == 'release'
+              uses: actions/setup-node@v4
               with:
                   registry-url: https://registry.npmjs.org
             - name: Publish to npm
+              if: steps.check.outputs.status == 'release'
               run: npm publish --access public --provenance
+            - name: Verify publication
+              if: steps.check.outputs.status == 'release'
+              run: |
+                  version=${{ steps.check.outputs.version }}
+                  # 1. the v<version> tag sits on the release merge commit
+                  [ "$(git rev-parse "v${version}^{commit}")" = "$(git rev-parse "$GITHUB_SHA")" ] || {
+                      echo "FAIL: v$version tag is not on the merge commit" >&2; exit 1;
+                  }
+                  # 2. the GitHub Release body matches the changelog entry
+                  gh release view "v$version" --json body --jq .body > release-notes-github.md
+                  diff release-notes.md release-notes-github.md || {
+                      echo "FAIL: GitHub Release body differs from the changelog entry" >&2; exit 1;
+                  }
+                  # 3. npm published the version
+                  package_name=$(jq -r .name package.json)
+                  npm_version=""
+                  for i in 1 2 3 4 5; do
+                      npm_version=$(npm view "$package_name" version 2>/dev/null || true)
+                      [ "$npm_version" = "$version" ] && break
+                      sleep 5
+                  done
+                  [ "$npm_version" = "$version" ] || {
+                      echo "FAIL: npm reports '${npm_version:-nothing}', expected $version" >&2; exit 1;
+                  }
+                  # 4. tag, Release, and CHANGELOG.md all name the same version
+                  [ "$(gh release view "v$version" --json tagName --jq .tagName)" = "v$version" ] || {
+                      echo "FAIL: GitHub Release tag name mismatch" >&2; exit 1;
+                  }
+                  grep -q "^## $version " CHANGELOG.md || {
+                      echo "FAIL: CHANGELOG.md has no entry for $version" >&2; exit 1;
+                  }
