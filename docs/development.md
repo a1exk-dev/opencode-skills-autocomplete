@@ -25,25 +25,21 @@ bun install
 
 ## Layout
 
-- `src/tui.ts` is the single plugin entry. It registers one palette command
-  per skill and binds the chord, and it holds the pure helpers (`sortSkills`,
-  `originTag`, `parseHotkey`, `pasteText`) in the same module.
-- `test/tui.test.ts` unit-tests those helpers and drives the exported entry
-  with a mocked `TuiPluginApi`.
+- `src/tui.ts` is the single plugin entry. It registers skill commands,
+  handles another `/` in the prompt, and binds the chord. Its helpers stay
+  private to the file.
+- `test/tui.test.ts` exercises skill selection through the plugin entry with
+  a simulated `TuiPluginApi`.
+- `test/prepare-release.test.ts` runs release preparation against a temporary
+  git repository and checks both resulting files.
 - `dist/` is the build output; `bun run build` writes the plugin entry and the
   declaration files that npm ships.
 
 ## Tests
 
-Vitest runs two layers:
-
-- Unit tests for the pure helpers: A-to-Z case-insensitive sort, origin
-  classification from the skill `location`, hotkey parsing, and paste-text
-  assembly.
-- One in-process integration test that invokes the exported TUI entry with a
-  mocked `TuiPluginApi` and asserts the registered command set, the chord
-  binding, the warn-and-skip path on a bad hotkey, and the exact text a
-  select inserts.
+Vitest checks skill ordering, origin tags, hotkey errors, dialog selection,
+and prompt text through the exported TUI entry. Release tests run the command
+in a temporary git repository, including rejected entries and failed writes.
 
 CI runs no real opencode. The live TUI behaviors are covered by the
 [manual smoke checklist in the README](../README.md#manual-smoke-checklist).

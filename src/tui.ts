@@ -4,7 +4,7 @@ import type {
     TuiPluginApi,
 } from "@opencode-ai/plugin/tui";
 
-export function sortSkills<Skill extends { name: string }>(
+function sortSkills<Skill extends { name: string }>(
     skills: readonly Skill[],
 ): Skill[] {
     return [...skills].sort((a, b) =>
@@ -14,7 +14,7 @@ export function sortSkills<Skill extends { name: string }>(
 
 const BUILT_IN = "<built-in>";
 
-export function originTag(
+function originTag(
     location: string,
     paths: { directory: string; worktree: string },
 ): "(user)" | "(project)" | "(built-in)" {
@@ -28,13 +28,11 @@ function isUnder(base: string, path: string): boolean {
     return path === base || path.startsWith(`${base}/`);
 }
 
-export const DEFAULT_HOTKEY = "ctrl+k";
+const DEFAULT_HOTKEY = "ctrl+k";
 
-export type HotkeyResult =
-    | { ok: true; hotkey: string }
-    | { ok: false; error: string };
+type HotkeyResult = { ok: true; hotkey: string } | { ok: false; error: string };
 
-export function parseHotkey(
+function parseHotkey(
     options: Record<string, unknown> | undefined,
 ): HotkeyResult {
     const value = options?.hotkey;
@@ -45,7 +43,7 @@ export function parseHotkey(
     return { ok: true, hotkey: value.trim() };
 }
 
-export function pasteText(name: string): string {
+function pasteText(name: string): string {
     return `/${name} `;
 }
 
