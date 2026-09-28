@@ -178,6 +178,14 @@ describe("plugin entry", () => {
         bindings?: readonly RegisteredBinding[];
     };
 
+    type TestKey = {
+        name: string;
+        ctrl: boolean;
+        meta: boolean;
+        option?: boolean;
+        preventDefault: () => void;
+    };
+
     function mockApi(
         skills: Skill[],
         extra: { boundKeys?: string[]; invalidKeys?: string[] } = {},
@@ -185,6 +193,55 @@ describe("plugin entry", () => {
         const layers: RegisteredLayer[] = [];
         const appended: string[] = [];
         const toasts: { variant?: string; message: string }[] = [];
+        const dialogs: Array<{
+            title: string;
+            options: { title: string; value: string; description?: string }[];
+            onSelect: (option: { value: string }) => void;
+        }> = [];
+        const keypressHandlers: Array<(key: TestKey) => void> = [];
+        const disposed: Array<() => void> = [];
+        let mode = "base";
+        const editor = (plainText: string, cursorOffset: number) => ({
+            plainText,
+            cursorOffset,
+            insertText(text: string) {
+                this.plainText =
+                    this.plainText.slice(0, this.cursorOffset) +
+                    text +
+                    this.plainText.slice(this.cursorOffset);
+                this.cursorOffset += text.length;
+            },
+        });
+        const renderer: {
+            keyInput: {
+                on: (event: string, handler: (key: never) => void) => void;
+                off: (event: string, handler: (key: never) => void) => void;
+            };
+            currentFocusedEditor: ReturnType<typeof editor> | null;
+        } = {
+            keyInput: {
+                on: (event, handler) => {
+                    if (event === "keypress")
+                        keypressHandlers.push(
+                            handler as (key: TestKey) => void,
+                        );
+                },
+                off: () => {},
+            },
+            currentFocusedEditor: null,
+        };
+        const press = (input: Omit<TestKey, "preventDefault">) => {
+            let prevented = false;
+            const key = {
+                ...input,
+                preventDefault: () => {
+                    prevented = true;
+                },
+            };
+            for (const handler of keypressHandlers) handler(key);
+            if (!prevented) renderer.currentFocusedEditor?.insertText(key.name);
+            return prevented;
+        };
         const api = {
             client: {
                 app: {
@@ -209,10 +266,19 @@ describe("plugin entry", () => {
                 },
             },
             ui: {
+                dialog: {
+                    open: false,
+                    replace: (render: () => unknown) => {
+                        dialogs.push(render() as (typeof dialogs)[number]);
+                    },
+                    clear: () => {},
+                },
+                DialogSelect: (props: (typeof dialogs)[number]) => props,
                 toast: (input: { variant?: string; message: string }) => {
                     toasts.push(input);
                 },
             },
+            mode: { current: () => mode },
             keymap: {
                 registerLayer: (layer: RegisteredLayer) => {
                     layers.push(layer);
@@ -227,8 +293,29 @@ describe("plugin entry", () => {
                     return [{ stroke: {}, display: key, match: {} }];
                 },
             },
+            lifecycle: {
+                signal: {},
+                onDispose: (fn: () => void) => {
+                    disposed.push(fn);
+                    return () => {};
+                },
+            },
+            renderer,
         } as unknown as TuiPluginApi;
-        return { api, layers, appended, toasts };
+        return {
+            api,
+            layers,
+            appended,
+            toasts,
+            dialogs,
+            editor,
+            renderer,
+            press,
+            setMode: (value: string) => {
+                mode = value;
+            },
+            disposed,
+        };
     }
 
     const skills: Skill[] = [
@@ -236,6 +323,10 @@ describe("plugin entry", () => {
         { name: "alpha", location: "/repo/.opencode/skills/alpha/SKILL.md" },
         { name: "Beta", location: "<built-in>" },
     ];
+
+    it("exports the package name as the plugin id for file-path loading", () => {
+        expect(plugin.id).toBe("opencode-skills-autocomplete");
+    });
 
     it("registers one palette command per skill, A to Z, with origin tags", async () => {
         const { api, layers } = mockApi(skills);
@@ -349,5 +440,78 @@ describe("plugin entry", () => {
         ]);
         expect(layers[0].bindings ?? []).toHaveLength(0);
         expect(layers[0].commands ?? []).toHaveLength(3);
+    });
+
+    it("offers another skill on the second / and preserves the first", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("/grilling ", 10);
+        renderer.currentFocusedEditor = prompt;
+        expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
+        expect(prompt.plainText).toBe("/grilling ");
+        expect(dialogs[0].title).toBe("Skills");
+        expect(dialogs[0].options.map((option) => option.title)).toEqual([
+            "/alpha",
+            "/Beta",
+            "/zeta",
+        ]);
+        dialogs[0].onSelect({ value: "Beta" });
+        expect(prompt.plainText).toBe("/grilling /Beta ");
+    });
+
+    it("inserts a selected skill at the cursor without doubling existing spaces", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("/grilling  more", 10);
+        renderer.currentFocusedEditor = prompt;
+        press({ name: "/", ctrl: false, meta: false });
+        dialogs[0].onSelect({ value: "Beta" });
+        expect(prompt.plainText).toBe("/grilling /Beta more");
+    });
+
+    it("preserves the first skill when / is typed just before its trailing space", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("/grilling ", 9);
+        renderer.currentFocusedEditor = prompt;
+        expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
+        dialogs[0].onSelect({ value: "Beta" });
+        expect(prompt.plainText).toBe("/grilling /Beta ");
+    });
+
+    it("leaves the built-in menu to / in an empty prompt", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        renderer.currentFocusedEditor = editor("", 0);
+        press({ name: "/", ctrl: false, meta: false });
+        expect(dialogs).toEqual([]);
+    });
+
+    it("leaves the built-in menu to / while filtering an open menu", async () => {
+        const { api, renderer, dialogs, editor, press, setMode } =
+            mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        renderer.currentFocusedEditor = editor("/tdd", 4);
+        setMode("autocomplete");
+        press({ name: "/", ctrl: false, meta: false });
+        expect(dialogs).toEqual([]);
+    });
+
+    it("ignores / when no prompt editor is focused", async () => {
+        const { api, dialogs, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        press({ name: "/", ctrl: false, meta: false });
+        expect(dialogs).toEqual([]);
+    });
+
+    it("ignores keys that are not a plain /", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        renderer.currentFocusedEditor = editor("/tdd ", 5);
+        press({ name: "a", ctrl: false, meta: false });
+        press({ name: "/", ctrl: true, meta: false });
+        press({ name: "/", ctrl: false, meta: true });
+        press({ name: "/", ctrl: false, meta: false, option: true });
+        expect(dialogs).toEqual([]);
     });
 });

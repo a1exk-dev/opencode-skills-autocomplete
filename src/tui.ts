@@ -1,4 +1,8 @@
-import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui";
+import type {
+    KeyEvent,
+    TuiPlugin,
+    TuiPluginApi,
+} from "@opencode-ai/plugin/tui";
 
 export function sortSkills<Skill extends { name: string }>(
     skills: readonly Skill[],
@@ -99,7 +103,8 @@ const tui: TuiPlugin = async (api, options) => {
         directory: api.state.path.directory,
         worktree: api.state.path.worktree,
     };
-    const commands = sortSkills(skills).map((skill) => ({
+    const sorted = sortSkills(skills);
+    const commands = sorted.map((skill) => ({
         namespace: "palette",
         name: `skill.${skill.name}`,
         title: skill.name,
@@ -111,6 +116,45 @@ const tui: TuiPlugin = async (api, options) => {
     }));
     const binding = chordBinding(api, options);
     api.keymap.registerLayer({ commands, bindings: binding ? [binding] : [] });
+    const keypress = (key: KeyEvent) => {
+        if (key.name !== "/" || key.ctrl || key.meta || key.option) return;
+        const editor = api.renderer.currentFocusedEditor;
+        if (!editor || api.ui.dialog.open) return;
+        if (editor.cursorOffset === 0 || api.mode.current() === "autocomplete")
+            return;
+        key.preventDefault();
+        const offset = editor.cursorOffset;
+        api.ui.dialog.replace(() =>
+            api.ui.DialogSelect({
+                title: "Skills",
+                options: sorted.map((skill) => ({
+                    title: `/${skill.name}`,
+                    value: skill.name,
+                    description: originTag(skill.location, paths),
+                })),
+                onSelect: (option) => {
+                    api.ui.dialog.clear();
+                    editor.cursorOffset = offset;
+                    const before = editor.plainText.slice(0, offset);
+                    editor.insertText(
+                        `${before && !/\s$/.test(before) ? " " : ""}/${option.value}${/\s/.test(editor.plainText[offset] ?? "") ? "" : " "}`,
+                    );
+                },
+            }),
+        );
+    };
+    // @opentui/core's KeyHandler extends a node EventEmitter whose types this
+    // project does not resolve, so the subscription is typed minimally.
+    const keyInput = api.renderer.keyInput as unknown as {
+        on: (event: "keypress", handler: (key: KeyEvent) => void) => void;
+        off: (event: "keypress", handler: (key: KeyEvent) => void) => void;
+    };
+    keyInput.on("keypress", keypress);
+    api.lifecycle.onDispose(() => keyInput.off("keypress", keypress));
 };
 
-export default { tui };
+// Required for file-path plugin loading; matches the npm package name so the
+// plugin id is the same in both load modes.
+const id = "opencode-skills-autocomplete";
+
+export default { id, tui };
