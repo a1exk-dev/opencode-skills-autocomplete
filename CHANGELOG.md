@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-09-28)
+
+### Bug Fixes
+
+- keep typed slash after dismissing skill menus (#17)
+
 ## 0.2.0 (2026-09-28)
 
 ### Features

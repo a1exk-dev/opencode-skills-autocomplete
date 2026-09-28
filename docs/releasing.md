@@ -14,9 +14,9 @@ the npm package, and checks that the records agree.
    before `1.0.0` a breaking change also bumps minor.
 2. Cut a `release/<version>` branch from `develop` and run
    `bun run release:prepare <version>` on it. The script sets the
-   `package.json` version and writes the `CHANGELOG.md` entry from the
-   commits since the previous tag: `feat` subjects under Features, `fix`
-   subjects under Bug Fixes.
+   `package.json` version and writes the `CHANGELOG.md` entry from commits
+   since the last changelog change on `develop`. It lists `feat` subjects
+   under Features and `fix` subjects under Bug Fixes.
 3. Open the pull request from the branch into `main` and review it. Check
    that the version fits the changes and that every changelog line is
    accurate. This review is the human gate.
