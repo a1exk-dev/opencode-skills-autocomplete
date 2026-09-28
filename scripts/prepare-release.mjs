@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
-export function buildChangelogSection(version, date, subjects) {
+function buildChangelogSection(version, date, subjects) {
     const feat = [];
     const fix = [];
     for (const subject of subjects) {
@@ -20,21 +20,21 @@ export function buildChangelogSection(version, date, subjects) {
     return `## ${version} (${date})\n\n${body}`;
 }
 
-function writeChangelog(section) {
-    const path = new URL("../CHANGELOG.md", import.meta.url);
+function prepareChangelog(section, old) {
     const header = "# Changelog\n";
-    if (!existsSync(path)) {
-        writeFileSync(path, `${header}\n${section}\n`);
-        return;
+    if (old === undefined) {
+        return `${header}\n${section}\n`;
     }
-    const old = readFileSync(path, "utf8");
     if (!old.startsWith(header))
         throw new Error("CHANGELOG.md must start with the changelog header");
     const version = section.match(/^## (\S+)/)?.[1] ?? "";
     if (old.includes(`## ${version} `))
         throw new Error(`CHANGELOG.md already has an entry for ${version}`);
-    const rest = old.slice(header.length).replace(/^\n+/, "");
-    writeFileSync(path, `${header}\n${section}\n\n${rest}\n`);
+    const rest = old
+        .slice(header.length)
+        .replace(/^\n+/, "")
+        .replace(/\n+$/, "");
+    return `${header}\n${section}\n\n${rest}\n`;
 }
 
 function main() {
@@ -45,9 +45,13 @@ function main() {
     }
 
     const pkgPath = new URL("../package.json", import.meta.url);
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    const changelogPath = new URL("../CHANGELOG.md", import.meta.url);
+    const previousPackage = readFileSync(pkgPath, "utf8");
+    const previousChangelog = existsSync(changelogPath)
+        ? readFileSync(changelogPath, "utf8")
+        : undefined;
+    const pkg = JSON.parse(previousPackage);
     pkg.version = version;
-    writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 4)}\n`);
 
     let since = "";
     try {
@@ -67,13 +71,36 @@ function main() {
         .trim()
         .split("\n");
 
-    writeChangelog(
+    const changelog = prepareChangelog(
         buildChangelogSection(
             version,
             new Date().toISOString().slice(0, 10),
             subjects,
         ),
+        previousChangelog,
     );
+    try {
+        writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 4)}\n`);
+        writeFileSync(changelogPath, changelog);
+    } catch (error) {
+        try {
+            if (readFileSync(pkgPath, "utf8") !== previousPackage)
+                writeFileSync(pkgPath, previousPackage);
+            if (previousChangelog === undefined) {
+                if (existsSync(changelogPath)) rmSync(changelogPath);
+            } else if (
+                readFileSync(changelogPath, "utf8") !== previousChangelog
+            ) {
+                writeFileSync(changelogPath, previousChangelog);
+            }
+        } catch (restoreError) {
+            throw new AggregateError(
+                [error, restoreError],
+                "Release preparation failed and could not restore both files",
+            );
+        }
+        throw error;
+    }
     console.log(
         `prepared ${version}: ${subjects.length} commit(s) since ${since || "the start"}`,
     );

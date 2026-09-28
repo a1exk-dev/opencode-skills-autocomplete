@@ -1,12 +1,13 @@
 # opencode-skills-autocomplete
 
-An [opencode](https://opencode.ai) plugin that lists every available skill as a row
-in the `/` menu and adds a configurable chord shortcut to the same list. Selecting a
-skill inserts `/name ` into the prompt at the cursor. The plugin never submits.
+An [opencode](https://opencode.ai) plugin that lists every available skill in
+the `/` menu. After selecting a skill, type `/` again to open a searchable
+skill list and add another one. Selecting a skill inserts `/name ` into the
+prompt at the cursor. The plugin never submits.
 
 ## Install
 
-Add the package to the `plugin` array in your `opencode.json`. opencode installs
+Add the package to the `plugin` array in your `tui.json`. opencode installs
 named npm packages automatically at startup and caches them.
 
 ```json
@@ -45,14 +46,20 @@ opencode does not submit a prompt that contains only `/name`, so the trailing
 space is what makes a skill-only prompt sendable: press Enter to run the
 skill.
 
+Type `/` again after the first skill to open the searchable Skills dialog.
+Select another skill to keep both in the prompt, for example
+`/grilling /tdd `. Press Esc to leave the prompt as it was.
+
 ### Chord shortcut
 
-`ctrl+k` by default opens the same command list without typing `/`. Configure
-the key with the `hotkey` option below.
+`ctrl+s` by default opens the command palette without typing `/`. OpenCode
+uses `ctrl+k` to delete to the end of the input line, so the plugin cannot use
+that key unless you free it in your TUI keybinds. Configure the shortcut with
+the `hotkey` option below.
 
 ### The `hotkey` option
 
-The chord accepts any valid opencode keybind string and defaults to `ctrl+k`:
+The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
 
 ```json
 {
@@ -92,8 +99,8 @@ More on the test layout and how changes land in
 
 ### Manual smoke checklist
 
-The live TUI has no automatable driver, so run these by hand after changes
-that touch skill registration or paste behavior. Use a project with at least
+Run these in a fresh TUI after changes that touch skill registration or
+paste behavior. Use a project with at least
 one user-level, one project-level, and one built-in skill.
 
 1. Open the `/` menu. Each skill shows as a row, in A-to-Z order, with the
@@ -101,13 +108,16 @@ one user-level, one project-level, and one built-in skill.
 2. Type a few letters. The list filters by name, case-insensitively.
 3. Select a skill. The prompt gains `/name ` with a trailing space at the
    cursor, and the prompt is not submitted.
-4. With only `/name ` in the prompt, press Enter. The skill runs.
-5. Press `ctrl+k`, or your configured hotkey. The command palette opens with
+4. Type `/` again, filter the Skills dialog, and select a second skill. Both
+   `/name ` entries remain in the prompt. Esc closes the dialog without changing
+   the prompt.
+5. With only `/name ` in the prompt, press Enter. The skill runs.
+6. Press `ctrl+s`, or your configured hotkey. The command palette opens with
    the same rows.
-6. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
+7. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
    A warning toast appears, the chord does nothing, and the `/` menu still
    works.
-7. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
+8. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
    restart. Same warn-and-skip behavior.
 
 ## Listing the plugin
