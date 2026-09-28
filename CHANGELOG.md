@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (2026-09-28)
+
+### Features
+
+- stack skills and harden release preparation
+
+### Bug Fixes
+
+- avoid default Ctrl+K collision
+
 ## 0.1.0 (2026-09-27)
 
 ### Features

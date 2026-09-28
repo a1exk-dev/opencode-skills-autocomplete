@@ -102,6 +102,7 @@ it("prepares the version and changelog from the same git history", () => {
         /^# Changelog\n\n## 0\.1\.1 \(\d{4}-\d{2}-\d{2}\)\n\n### Features\n\n- add skill list\n\n### Bug Fixes\n\n- keep skill selection/,
     );
     expect(changelog).toContain("## 0.1.0 (2026-09-28)\n\nFirst release.");
+    expect(changelog).toMatch(/First release\.\n$/);
 });
 
 it("restores the package version when the changelog write fails", () => {
