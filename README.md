@@ -7,7 +7,7 @@ prompt at the cursor. The plugin never submits.
 
 ## Install
 
-Add the package to the `plugin` array in your `opencode.json`. opencode installs
+Add the package to the `plugin` array in your `tui.json`. opencode installs
 named npm packages automatically at startup and caches them.
 
 ```json
@@ -52,12 +52,14 @@ Select another skill to keep both in the prompt, for example
 
 ### Chord shortcut
 
-`ctrl+k` by default opens the command palette without typing `/`. Configure
-the key with the `hotkey` option below.
+`ctrl+s` by default opens the command palette without typing `/`. OpenCode
+uses `ctrl+k` to delete to the end of the input line, so the plugin cannot use
+that key unless you free it in your TUI keybinds. Configure the shortcut with
+the `hotkey` option below.
 
 ### The `hotkey` option
 
-The chord accepts any valid opencode keybind string and defaults to `ctrl+k`:
+The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
 
 ```json
 {
@@ -110,7 +112,7 @@ one user-level, one project-level, and one built-in skill.
    `/name ` entries remain in the prompt. Esc closes the dialog without changing
    the prompt.
 5. With only `/name ` in the prompt, press Enter. The skill runs.
-6. Press `ctrl+k`, or your configured hotkey. The command palette opens with
+6. Press `ctrl+s`, or your configured hotkey. The command palette opens with
    the same rows.
 7. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
    A warning toast appears, the chord does nothing, and the `/` menu still

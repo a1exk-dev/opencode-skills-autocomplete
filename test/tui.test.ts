@@ -1,4 +1,5 @@
 import type { TuiPluginApi, TuiPluginMeta } from "@opencode-ai/plugin/tui";
+import { createTestKeymap } from "@opentui/keymap/testing";
 import { describe, expect, it } from "vitest";
 import plugin from "../src/tui";
 
@@ -251,13 +252,34 @@ describe("plugin entry", () => {
         expect(appended).toEqual(["/Beta "]);
     });
 
-    it("binds the default ctrl+k chord to the palette command", async () => {
-        const { api, layers } = mockApi(skills);
+    it("opens the palette with the default chord when ctrl+k is bound by the editor", async () => {
+        const { api, layers, toasts } = mockApi(skills, {
+            boundKeys: ["ctrl+k"],
+        });
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
         expect(layers[0].bindings).toEqual([
-            { key: "ctrl+k", cmd: "command.palette.show" },
+            { key: "ctrl+s", cmd: "command.palette.show" },
         ]);
-        expect(layers[0].commands ?? []).toHaveLength(3);
+        expect(toasts).toEqual([]);
+
+        const { keymap, host, cleanup } = createTestKeymap({
+            defaultKeys: true,
+        });
+        let opened = false;
+        keymap.registerLayer({
+            commands: [
+                {
+                    name: "command.palette.show",
+                    run: () => {
+                        opened = true;
+                    },
+                },
+            ],
+            bindings: layers[0].bindings,
+        });
+        host.press("s", { ctrl: true });
+        expect(opened).toBe(true);
+        cleanup();
     });
 
     it("uses the hotkey option as the chord key", async () => {
@@ -282,14 +304,14 @@ describe("plugin entry", () => {
 
     it("warns once and skips the chord when the key is already bound", async () => {
         const { api, layers, toasts } = mockApi(skills, {
-            boundKeys: ["ctrl+k"],
+            boundKeys: ["ctrl+s"],
         });
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
         expect(toasts).toEqual([
             {
                 variant: "warning",
                 message:
-                    'hotkey "ctrl+k" is already bound; chord skipped, the / menu still works',
+                    'hotkey "ctrl+s" is already bound; chord skipped, the / menu still works',
             },
         ]);
         expect(layers[0].bindings ?? []).toHaveLength(0);

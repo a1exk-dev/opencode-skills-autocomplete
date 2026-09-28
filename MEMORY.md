@@ -18,6 +18,7 @@
 - A file-path plugin (absolute path or `file://` in a `tui.json` `plugin` array) must export `id` on the default export object (`{ tui, id }`); npm-package plugins get the id from the package name. Without `id`, the TUI loader drops the plugin silently.
 - TUI loader diagnostics go to `console.error` and do not reach the terminal pty; opencode's own log (`~/.local/share/opencode/log/opencode.log`) only records the server-side plugin load, not TUI plugin activation.
 - The npm-cached copy of an installed plugin lives at `~/.cache/opencode/packages/<name>/node_modules/<name>/dist/tui.js` (and a `<name>@latest` twin). Editing that file swaps the live plugin without republishing; a running session keeps the old code until restart.
+- OpenCode 1.18.32 binds `ctrl+k` to `input.delete.to.line.end` in its effective TUI keybinds, so the plugin's conflict check skips that chord with a startup warning. `ctrl+s` has no default TUI binding and opens the palette when registered by the plugin (checked in a fresh TUI). `OPENCODE_CONFIG_DIR` adds TUI plugins to the global list; for a smoke test of a local build alongside an installed package, give a file-path wrapper a distinct plugin `id`, or the duplicate id is skipped.
 
 ## Build branch state
 

@@ -28,7 +28,7 @@ function isUnder(base: string, path: string): boolean {
     return path === base || path.startsWith(`${base}/`);
 }
 
-const DEFAULT_HOTKEY = "ctrl+k";
+const DEFAULT_HOTKEY = "ctrl+s";
 
 type HotkeyResult = { ok: true; hotkey: string } | { ok: false; error: string };
 
