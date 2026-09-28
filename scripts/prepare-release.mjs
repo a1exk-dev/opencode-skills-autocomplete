@@ -30,7 +30,10 @@ function prepareChangelog(section, old) {
     const version = section.match(/^## (\S+)/)?.[1] ?? "";
     if (old.includes(`## ${version} `))
         throw new Error(`CHANGELOG.md already has an entry for ${version}`);
-    const rest = old.slice(header.length).replace(/^\n+/, "");
+    const rest = old
+        .slice(header.length)
+        .replace(/^\n+/, "")
+        .replace(/\n+$/, "");
     return `${header}\n${section}\n\n${rest}\n`;
 }
 
