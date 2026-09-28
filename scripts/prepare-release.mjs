@@ -53,16 +53,14 @@ function main() {
     const pkg = JSON.parse(previousPackage);
     pkg.version = version;
 
-    let since = "";
-    try {
-        since = execFileSync(
-            "git",
-            ["describe", "--tags", "--abbrev=0", "--match", "v*"],
-            { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-        ).trim();
-    } catch {
-        // no v* tag yet: cover the whole history
-    }
+    // The main release tag can be on a squash commit outside develop's history.
+    const since = /^## \d+\.\d+\.\d+ \(/m.test(previousChangelog ?? "")
+        ? execFileSync(
+              "git",
+              ["log", "-1", "--format=%H", "HEAD", "--", "CHANGELOG.md"],
+              { encoding: "utf8" },
+          ).trim()
+        : "";
     const subjects = execFileSync(
         "git",
         ["log", ...(since ? [`${since}..HEAD`] : []), "--pretty=%s"],

@@ -105,6 +105,64 @@ it("prepares the version and changelog from the same git history", () => {
     expect(changelog).toMatch(/First release\.\n$/);
 });
 
+it("excludes changes already released when the latest tag is not on develop", () => {
+    const dir = releaseFixture();
+    execFileSync("git", ["switch", "-q", "-c", "develop"], { cwd: dir });
+    writeFileSync(join(dir, "old.txt"), "previous fix");
+    execFileSync("git", ["add", "old.txt"], { cwd: dir });
+    commit(dir, "fix: previous fix");
+    execFileSync("bun", [join(dir, "scripts/prepare-release.mjs"), "0.2.0"], {
+        cwd: dir,
+    });
+    execFileSync("git", ["add", "package.json", "CHANGELOG.md"], {
+        cwd: dir,
+    });
+    commit(dir, "chore(release): prepare 0.2.0");
+    execFileSync("git", ["switch", "-q", "-c", "main", "v0.1.0"], {
+        cwd: dir,
+    });
+    execFileSync("git", ["merge", "--squash", "develop"], { cwd: dir });
+    commit(dir, "chore(release): prepare 0.2.0 (#15)");
+    execFileSync("git", ["tag", "v0.2.0"], { cwd: dir });
+    execFileSync("git", ["switch", "-q", "develop"], { cwd: dir });
+    writeFileSync(join(dir, "new.txt"), "new fix");
+    execFileSync("git", ["add", "new.txt"], { cwd: dir });
+    commit(dir, "fix: new fix");
+
+    execFileSync("bun", [join(dir, "scripts/prepare-release.mjs"), "0.2.1"], {
+        cwd: dir,
+    });
+    const changelog = readFileSync(join(dir, "CHANGELOG.md"), "utf8");
+    expect(changelog).toContain("## 0.2.1 (");
+    expect(changelog.split("## 0.2.0")[0]).toContain("- new fix");
+    expect(changelog.split("## 0.2.0")[0]).not.toContain("previous fix");
+});
+
+it("includes earlier changes when the changelog has no release entry yet", () => {
+    fixture = mkdtempSync(join(tmpdir(), "release-prepare-"));
+    mkdirSync(join(fixture, "scripts"));
+    copyFileSync(
+        new URL("../scripts/prepare-release.mjs", import.meta.url),
+        join(fixture, "scripts/prepare-release.mjs"),
+    );
+    writeFileSync(join(fixture, "package.json"), '{"version":"0.0.0"}\n');
+    execFileSync("git", ["init", "-q"], { cwd: fixture });
+    execFileSync("git", ["add", "."], { cwd: fixture });
+    commit(fixture, "feat: first skill menu");
+    writeFileSync(join(fixture, "CHANGELOG.md"), "# Changelog\n");
+    execFileSync("git", ["add", "CHANGELOG.md"], { cwd: fixture });
+    commit(fixture, "docs: add changelog header");
+
+    execFileSync(
+        "bun",
+        [join(fixture, "scripts/prepare-release.mjs"), "0.1.0"],
+        { cwd: fixture },
+    );
+    expect(readFileSync(join(fixture, "CHANGELOG.md"), "utf8")).toContain(
+        "- first skill menu",
+    );
+});
+
 it("restores the package version when the changelog write fails", () => {
     const dir = releaseFixture();
     const pkg = join(dir, "package.json");
