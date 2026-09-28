@@ -21,8 +21,8 @@ keep the four gates green (`bun run check`, `bun run typecheck`,
 
 ## Releases
 
-Releases are automated with release-please; see
-[docs/releasing.md](docs/releasing.md).
+Releases are prepared on a release branch and published by the workflow on
+`main`; see [docs/releasing.md](docs/releasing.md).
 
 ## License
 
