@@ -48,7 +48,8 @@ skill.
 
 Type `/` again after the first skill to open the searchable Skills dialog.
 Select another skill to keep both in the prompt, for example
-`/grilling /tdd `. Press Esc to leave the prompt as it was.
+`/grilling /tdd `. Press Esc to close either menu and keep the `/` you typed
+at the cursor.
 
 ### Chord shortcut
 
@@ -104,13 +105,15 @@ paste behavior. Use a project with at least
 one user-level, one project-level, and one built-in skill.
 
 1. Open the `/` menu. Each skill shows as a row, in A-to-Z order, with the
-   right `(user)`, `(project)`, or `(built-in)` tag.
-2. Type a few letters. The list filters by name, case-insensitively.
+   right `(user)`, `(project)`, or `(built-in)` tag. Press Esc: the menu closes
+   and `/` stays in the prompt.
+2. Reopen the `/` menu and type a few letters. The list filters by name,
+   case-insensitively.
 3. Select a skill. The prompt gains `/name ` with a trailing space at the
    cursor, and the prompt is not submitted.
 4. Type `/` again, filter the Skills dialog, and select a second skill. Both
-   `/name ` entries remain in the prompt. Esc closes the dialog without changing
-   the prompt.
+   `/name ` entries remain in the prompt. Open the dialog again and press Esc:
+   the typed `/` remains at the cursor.
 5. With only `/name ` in the prompt, press Enter. The skill runs.
 6. Press `ctrl+s`, or your configured hotkey. The command palette opens with
    the same rows.

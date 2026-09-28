@@ -115,39 +115,71 @@ const tui: TuiPlugin = async (api, options) => {
     const binding = chordBinding(api, options);
     api.keymap.registerLayer({ commands, bindings: binding ? [binding] : [] });
     const keypress = (key: KeyEvent) => {
-        if (key.name !== "/" || key.ctrl || key.meta || key.option) return;
         const editor = api.renderer.currentFocusedEditor;
+        if (
+            key.name === "escape" &&
+            api.mode.current() === "autocomplete" &&
+            editor?.plainText.startsWith("/") &&
+            editor.cursorOffset > 0 &&
+            !/\s/.test(editor.plainText.slice(0, editor.cursorOffset))
+        ) {
+            // OpenCode's slash-menu Esc deletes from the start to the cursor.
+            const offset = editor.cursorOffset;
+            editor.cursorOffset = 0;
+            void Promise.resolve().then(() => {
+                editor.cursorOffset = offset;
+            });
+            return;
+        }
+        if (key.name !== "/" || key.ctrl || key.meta || key.option) return;
         if (!editor || api.ui.dialog.open) return;
         if (editor.cursorOffset === 0 || api.mode.current() === "autocomplete")
             return;
         key.preventDefault();
         const offset = editor.cursorOffset;
-        api.ui.dialog.replace(() =>
-            api.ui.DialogSelect({
-                title: "Skills",
-                options: sorted.map((skill) => ({
-                    title: `/${skill.name}`,
-                    value: skill.name,
-                    description: originTag(skill.location, paths),
-                })),
-                onSelect: (option) => {
-                    api.ui.dialog.clear();
-                    editor.cursorOffset = offset;
-                    const before = editor.plainText.slice(0, offset);
-                    editor.insertText(
-                        `${before && !/\s$/.test(before) ? " " : ""}/${option.value}${/\s/.test(editor.plainText[offset] ?? "") ? "" : " "}`,
-                    );
-                },
-            }),
+        let selected = false;
+        api.ui.dialog.replace(
+            () =>
+                api.ui.DialogSelect({
+                    title: "Skills",
+                    options: sorted.map((skill) => ({
+                        title: `/${skill.name}`,
+                        value: skill.name,
+                        description: originTag(skill.location, paths),
+                    })),
+                    onSelect: (option) => {
+                        selected = true;
+                        api.ui.dialog.clear();
+                        editor.cursorOffset = offset;
+                        const before = editor.plainText.slice(0, offset);
+                        editor.insertText(
+                            `${before && !/\s$/.test(before) ? " " : ""}/${option.value}${/\s/.test(editor.plainText[offset] ?? "") ? "" : " "}`,
+                        );
+                    },
+                }),
+            () => {
+                if (selected) return;
+                editor.cursorOffset = offset;
+                editor.insertText("/");
+                // Let OpenCode process the edit with the cursor at the start,
+                // or its built-in slash menu reopens on dismissal.
+                editor.cursorOffset = 0;
+                void Promise.resolve().then(() => {
+                    editor.cursorOffset = offset + 1;
+                });
+            },
         );
     };
-    // @opentui/core's KeyHandler extends a node EventEmitter whose types this
-    // project does not resolve, so the subscription is typed minimally.
+    // Run before OpenCode's Esc handler, which stops propagation. The
+    // EventEmitter types are not resolved here, so type the subscription minimally.
     const keyInput = api.renderer.keyInput as unknown as {
-        on: (event: "keypress", handler: (key: KeyEvent) => void) => void;
+        prependListener: (
+            event: "keypress",
+            handler: (key: KeyEvent) => void,
+        ) => void;
         off: (event: "keypress", handler: (key: KeyEvent) => void) => void;
     };
-    keyInput.on("keypress", keypress);
+    keyInput.prependListener("keypress", keypress);
     api.lifecycle.onDispose(() => keyInput.off("keypress", keypress));
 };
 

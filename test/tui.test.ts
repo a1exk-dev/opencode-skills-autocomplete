@@ -48,6 +48,7 @@ describe("plugin entry", () => {
         const disposed: Array<() => void> = [];
         let mode = "base";
         let dialogOpen = false;
+        let onDialogClose: (() => void) | undefined;
         const editor = (plainText: string, cursorOffset: number) => ({
             plainText,
             cursorOffset,
@@ -61,15 +62,18 @@ describe("plugin entry", () => {
         });
         const renderer: {
             keyInput: {
-                on: (event: string, handler: (key: never) => void) => void;
+                prependListener: (
+                    event: string,
+                    handler: (key: never) => void,
+                ) => void;
                 off: (event: string, handler: (key: never) => void) => void;
             };
             currentFocusedEditor: ReturnType<typeof editor> | null;
         } = {
             keyInput: {
-                on: (event, handler) => {
+                prependListener: (event, handler) => {
                     if (event === "keypress")
-                        keypressHandlers.push(
+                        keypressHandlers.unshift(
                             handler as (key: TestKey) => void,
                         );
                 },
@@ -92,6 +96,11 @@ describe("plugin entry", () => {
                 },
             };
             for (const handler of keypressHandlers) handler(key);
+            if (dialogOpen && key.name === "escape") {
+                onDialogClose?.();
+                dialogOpen = false;
+                return prevented;
+            }
             if (!prevented && !dialogOpen)
                 renderer.currentFocusedEditor?.insertText(key.name);
             return prevented;
@@ -124,11 +133,13 @@ describe("plugin entry", () => {
                     get open() {
                         return dialogOpen;
                     },
-                    replace: (render: () => unknown) => {
+                    replace: (render: () => unknown, onClose?: () => void) => {
                         dialogOpen = true;
+                        onDialogClose = onClose;
                         dialogs.push(render() as (typeof dialogs)[number]);
                     },
                     clear: () => {
+                        onDialogClose?.();
                         dialogOpen = false;
                     },
                 },
@@ -384,17 +395,34 @@ describe("plugin entry", () => {
         expect(prompt.plainText).toBe("/grilling /Beta ");
     });
 
-    it("keeps the prompt intact if the second skill list is dismissed", async () => {
+    it("keeps the typed slash at the cursor when the Skills dialog is dismissed", async () => {
         const { api, renderer, dialogs, editor, press } = mockApi(skills);
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
-        const prompt = editor("/grilling ", 10);
+        for (const [initial, expected] of [
+            ["/grilling ", "/grilling /"],
+            ["/grilling more", "/grilling /more"],
+        ]) {
+            const prompt = editor(initial, 10);
+            renderer.currentFocusedEditor = prompt;
+            press({ name: "/", ctrl: false, meta: false });
+            expect(dialogs.at(-1)?.title).toBe("Skills");
+            press({ name: "escape", ctrl: false, meta: false });
+            await Promise.resolve();
+            expect(prompt.plainText).toBe(expected);
+            expect(prompt.cursorOffset).toBe(11);
+        }
+    });
+
+    it("selects a later skill without doubling the typed slash or submitting", async () => {
+        const { api, renderer, dialogs, editor, press, appended } =
+            mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("ask more", 3);
         renderer.currentFocusedEditor = prompt;
         press({ name: "/", ctrl: false, meta: false });
-        expect(dialogs).toHaveLength(1);
-        press({ name: "/", ctrl: false, meta: false });
-        expect(dialogs).toHaveLength(1);
-        api.ui.dialog.clear();
-        expect(prompt.plainText).toBe("/grilling ");
+        dialogs[0].onSelect({ value: "Beta" });
+        expect(prompt.plainText).toBe("ask /Beta more");
+        expect(appended).toEqual([]);
     });
 
     it("stops intercepting slashes after the plugin is disposed", async () => {
