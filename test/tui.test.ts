@@ -400,7 +400,7 @@ describe("plugin entry", () => {
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
         for (const [initial, expected] of [
             ["/grilling ", "/grilling /"],
-            ["/grilling more", "/grilling /more"],
+            ["/grilling  more", "/grilling / more"],
         ]) {
             const prompt = editor(initial, 10);
             renderer.currentFocusedEditor = prompt;
@@ -417,7 +417,7 @@ describe("plugin entry", () => {
         const { api, renderer, dialogs, editor, press, appended } =
             mockApi(skills);
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
-        const prompt = editor("ask more", 3);
+        const prompt = editor("ask  more", 4);
         renderer.currentFocusedEditor = prompt;
         press({ name: "/", ctrl: false, meta: false });
         dialogs[0].onSelect({ value: "Beta" });
@@ -447,14 +447,79 @@ describe("plugin entry", () => {
         expect(prompt.plainText).toBe("/grilling /Beta more");
     });
 
-    it("preserves the first skill when / is typed just before its trailing space", async () => {
+    it("keeps OpenCode's menu closed for a / typed inside the first word", async () => {
         const { api, renderer, dialogs, editor, press } = mockApi(skills);
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
-        const prompt = editor("/grilling ", 9);
+        for (const [text, offset, expected] of [
+            ["/grilling ", 9, "/grilling/ "],
+            ["/abc", 2, "/a/bc"],
+        ] as const) {
+            const prompt = editor(text, offset);
+            renderer.currentFocusedEditor = prompt;
+            expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
+            expect(prompt.plainText).toBe(expected);
+            expect(prompt.cursorOffset).toBe(0);
+            await Promise.resolve();
+            expect(prompt.cursorOffset).toBe(offset + 1);
+        }
+        expect(dialogs).toEqual([]);
+    });
+
+    it("opens the list for a / that whitespace or a prompt edge touches on both sides", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        for (const [text, offset] of [
+            ["fix this ", 9],
+            ["fix this  now", 9],
+            ["first line\n", 11],
+            ["tab\t\tend", 4],
+        ] as const) {
+            const prompt = editor(text, offset);
+            renderer.currentFocusedEditor = prompt;
+            expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
+            expect(dialogs.at(-1)?.title).toBe("Skills");
+            expect(prompt.plainText).toBe(text);
+            press({ name: "escape", ctrl: false, meta: false });
+        }
+        expect(dialogs).toHaveLength(4);
+    });
+
+    it("types a plain / when a non-whitespace character touches it", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        for (const [text, offset, expected] of [
+            ["path", 4, "path/"],
+            ["see (", 5, "see (/"],
+            ["ask more", 4, "ask /more"],
+        ] as const) {
+            const prompt = editor(text, offset);
+            renderer.currentFocusedEditor = prompt;
+            expect(press({ name: "/", ctrl: false, meta: false })).toBe(false);
+            expect(prompt.plainText).toBe(expected);
+        }
+        expect(dialogs).toEqual([]);
+    });
+
+    it("keeps OpenCode's menu closed for a / typed at the start before text", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("abc", 0);
         renderer.currentFocusedEditor = prompt;
         expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
-        dialogs[0].onSelect({ value: "Beta" });
-        expect(prompt.plainText).toBe("/grilling /Beta ");
+        expect(dialogs).toEqual([]);
+        expect(prompt.plainText).toBe("/abc");
+        // OpenCode reads the edit with the cursor at the start, so its menu stays closed.
+        expect(prompt.cursorOffset).toBe(0);
+        await Promise.resolve();
+        expect(prompt.cursorOffset).toBe(1);
+    });
+
+    it("leaves a / typed at the start before whitespace to OpenCode's menu", async () => {
+        const { api, renderer, dialogs, editor, press } = mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        renderer.currentFocusedEditor = editor(" abc", 0);
+        expect(press({ name: "/", ctrl: false, meta: false })).toBe(false);
+        expect(dialogs).toEqual([]);
     });
 
     it("leaves the built-in menu to / in an empty prompt", async () => {
@@ -473,6 +538,19 @@ describe("plugin entry", () => {
         setMode("autocomplete");
         press({ name: "/", ctrl: false, meta: false });
         expect(dialogs).toEqual([]);
+    });
+
+    it("closes an open built-in menu for a / typed at the start before text", async () => {
+        const { api, renderer, dialogs, editor, press, setMode } =
+            mockApi(skills);
+        await plugin.tui(api, undefined, {} as TuiPluginMeta);
+        const prompt = editor("/ab", 0);
+        renderer.currentFocusedEditor = prompt;
+        setMode("autocomplete");
+        expect(press({ name: "/", ctrl: false, meta: false })).toBe(true);
+        expect(dialogs).toEqual([]);
+        expect(prompt.plainText).toBe("//ab");
+        expect(prompt.cursorOffset).toBe(0);
     });
 
     it("ignores / when no prompt editor is focused", async () => {
