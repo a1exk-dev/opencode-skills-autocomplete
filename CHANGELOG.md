@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (2026-10-03)
+
+### Features
+
+- open skill selection only for a standalone slash (#20)
+
 ## 0.2.1 (2026-09-28)
 
 ### Bug Fixes
