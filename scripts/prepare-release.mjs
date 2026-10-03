@@ -1,11 +1,19 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
-function buildChangelogSection(version, date, subjects) {
+// Lines that earlier releases already list. The changelog is the record of what shipped.
+function releasedEntries(changelog) {
+    return new Set(
+        [...(changelog ?? "").matchAll(/^- (.+)$/gm)].map((match) => match[1]),
+    );
+}
+
+function buildChangelogSection(version, date, subjects, released) {
     const feat = [];
     const fix = [];
     for (const subject of subjects) {
         const match = /^(\w+)(?:\([^)]*\))?!?:\s*(.+)$/.exec(subject);
+        if (match && released.has(match[2])) continue;
         if (match?.[1] === "feat") feat.push(match[2]);
         else if (match?.[1] === "fix") fix.push(match[2]);
     }
@@ -54,6 +62,8 @@ function main() {
     pkg.version = version;
 
     // The main release tag can be on a squash commit outside develop's history.
+    // After a merge back, that squash commit still leaves develop's own earlier
+    // commits in range, so entries already in the changelog are skipped below.
     const since = /^## \d+\.\d+\.\d+ \(/m.test(previousChangelog ?? "")
         ? execFileSync(
               "git",
@@ -74,6 +84,7 @@ function main() {
             version,
             new Date().toISOString().slice(0, 10),
             subjects,
+            releasedEntries(previousChangelog),
         ),
         previousChangelog,
     );
