@@ -43,6 +43,30 @@ function parseHotkey(
     return { ok: true, hotkey: value.trim() };
 }
 
+// A "/" opens skill selection only when whitespace or the prompt edge touches it on both sides.
+function isStandaloneSlash(text: string, offset: number): boolean {
+    const before = text[offset - 1];
+    const after = text[offset];
+    return (
+        (before === undefined || /\s/.test(before)) &&
+        (after === undefined || /\s/.test(after))
+    );
+}
+
+function noWhitespaceBefore(text: string, offset: number): boolean {
+    return !/\s/.test(text.slice(0, offset));
+}
+
+// OpenCode opens its slash menu while the prompt starts with "/" and no
+// whitespace precedes the cursor. A "/" typed at offset 0 becomes that first
+// character, so it counts as already inside the first word.
+function slashWouldOpenBuiltInMenu(text: string, offset: number): boolean {
+    return (
+        (offset === 0 || text.startsWith("/")) &&
+        noWhitespaceBefore(text, offset)
+    );
+}
+
 function pasteText(name: string): string {
     return `/${name} `;
 }
@@ -90,6 +114,20 @@ function chordBinding(
     return { key: parsed.hotkey, cmd: PALETTE_COMMAND };
 }
 
+function insertSlashQuietly(
+    editor: { cursorOffset: number; insertText: (text: string) => void },
+    offset: number,
+): void {
+    editor.cursorOffset = offset;
+    editor.insertText("/");
+    // Let OpenCode process the edit with the cursor at the start,
+    // or its built-in slash menu opens for the new leading slash.
+    editor.cursorOffset = 0;
+    void Promise.resolve().then(() => {
+        editor.cursorOffset = offset + 1;
+    });
+}
+
 const tui: TuiPlugin = async (api, options) => {
     const { data: skills } = await api.client.app.skills<true>(
         {},
@@ -121,7 +159,7 @@ const tui: TuiPlugin = async (api, options) => {
             api.mode.current() === "autocomplete" &&
             editor?.plainText.startsWith("/") &&
             editor.cursorOffset > 0 &&
-            !/\s/.test(editor.plainText.slice(0, editor.cursorOffset))
+            noWhitespaceBefore(editor.plainText, editor.cursorOffset)
         ) {
             // OpenCode's slash-menu Esc deletes from the start to the cursor.
             const offset = editor.cursorOffset;
@@ -133,10 +171,22 @@ const tui: TuiPlugin = async (api, options) => {
         }
         if (key.name !== "/" || key.ctrl || key.meta || key.option) return;
         if (!editor || api.ui.dialog.open) return;
-        if (editor.cursorOffset === 0 || api.mode.current() === "autocomplete")
-            return;
-        key.preventDefault();
         const offset = editor.cursorOffset;
+        // An open built-in menu owns the keystroke, except at the start where
+        // the "/" must not keep the menu open.
+        if (api.mode.current() === "autocomplete" && offset !== 0) return;
+        if (!isStandaloneSlash(editor.plainText, offset)) {
+            // Anywhere else the "/" is plain text. Type it ourselves only
+            // where OpenCode would turn it into a menu.
+            if (slashWouldOpenBuiltInMenu(editor.plainText, offset)) {
+                key.preventDefault();
+                insertSlashQuietly(editor, offset);
+            }
+            return;
+        }
+        // A standalone "/" at the start is OpenCode's own menu.
+        if (offset === 0) return;
+        key.preventDefault();
         let selected = false;
         api.ui.dialog.replace(
             () =>
@@ -159,14 +209,7 @@ const tui: TuiPlugin = async (api, options) => {
                 }),
             () => {
                 if (selected) return;
-                editor.cursorOffset = offset;
-                editor.insertText("/");
-                // Let OpenCode process the edit with the cursor at the start,
-                // or its built-in slash menu reopens on dismissal.
-                editor.cursorOffset = 0;
-                void Promise.resolve().then(() => {
-                    editor.cursorOffset = offset + 1;
-                });
+                insertSlashQuietly(editor, offset);
             },
         );
     };

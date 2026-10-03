@@ -1,9 +1,9 @@
 # opencode-skills-autocomplete
 
 An [opencode](https://opencode.ai) plugin that lists every available skill in
-the `/` menu. After selecting a skill, type `/` again to open a searchable
-skill list and add another one. Selecting a skill inserts `/name ` into the
-prompt at the cursor. The plugin never submits.
+the `/` menu. After selecting a skill, type a standalone `/` to open a
+searchable skill list and add another one. Selecting a skill inserts `/name `
+into the prompt at the cursor. The plugin never submits.
 
 ## Install
 
@@ -46,10 +46,29 @@ opencode does not submit a prompt that contains only `/name`, so the trailing
 space is what makes a skill-only prompt sendable: press Enter to run the
 skill.
 
-Type `/` again after the first skill to open the searchable Skills dialog.
-Select another skill to keep both in the prompt, for example
+Type a standalone `/` after the first skill to open the searchable Skills
+dialog. Select another skill to keep both in the prompt, for example
 `/grilling /tdd `. Press Esc to close either menu and keep the `/` you typed
 at the cursor.
+
+A `/` is standalone when the character directly before it is whitespace
+(such as a space, tab, or line break) or the start of the prompt, and the
+character directly after it is whitespace or the end of the prompt. Any other
+`/` is plain text and opens no menu:
+
+- `fix this /` opens the Skills dialog.
+- `path/to/file`, `http://`, and `see (/` type a plain `/`.
+- With the cursor directly before `more` in `ask more` (after the space), a
+  typed `/` is a plain `/` in front of `more`.
+
+The rule covers opencode's own `/` menu too:
+
+- A `/` typed at the start of the prompt directly before text, or in the first
+  word of a prompt that starts with `/`, is plain text and opens no menu.
+- If that menu is already open, a `/` typed at the very start closes it.
+- An empty prompt, or a `/` at the start before whitespace, still opens the
+  menu.
+- Typing more characters in that first word can open the menu again.
 
 ### Chord shortcut
 
@@ -111,17 +130,26 @@ one user-level, one project-level, and one built-in skill.
    case-insensitively.
 3. Select a skill. The prompt gains `/name ` with a trailing space at the
    cursor, and the prompt is not submitted.
-4. Type `/` again, filter the Skills dialog, and select a second skill. Both
-   `/name ` entries remain in the prompt. Open the dialog again and press Esc:
-   the typed `/` remains at the cursor.
-5. With only `/name ` in the prompt, press Enter. The skill runs.
-6. Press `ctrl+s`, or your configured hotkey. The command palette opens with
-   the same rows.
-7. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
-   A warning toast appears, the chord does nothing, and the `/` menu still
-   works.
-8. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
-   restart. Same warn-and-skip behavior.
+4. Type a standalone `/` (a space before it, nothing after it), filter the
+   Skills dialog, and select a second skill. Both `/name ` entries remain in
+   the prompt. Open the dialog again and press Esc: the typed `/` remains at
+   the cursor.
+5. Type `path/` in an empty prompt, then ` /`. The first `/` opens no menu and
+   the second opens the Skills dialog.
+6. Clear the prompt, type `abc`, press Home, and type `/`. The prompt reads
+   `/abc` and no menu opens.
+7. Clear the prompt, type `/ab`, and press Esc. Move the cursor between `a` and
+   `b`, and type `/`. The prompt reads `/a/b` and no menu opens.
+8. Clear the prompt, type `/ab` with opencode's menu open, press Home, and type
+   `/`. The menu closes and the prompt reads `//ab`.
+9. With only `/name ` in the prompt, press Enter. The skill runs.
+10. Press `ctrl+s`, or your configured hotkey. The command palette opens with
+    the same rows.
+11. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
+    A warning toast appears, the chord does nothing, and the `/` menu still
+    works.
+12. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
+    restart. Same warn-and-skip behavior.
 
 ## Listing the plugin
 
