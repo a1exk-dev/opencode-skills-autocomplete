@@ -16,7 +16,8 @@ the npm package, and checks that the records agree.
    `bun run release:prepare <version>` on it. The script sets the
    `package.json` version and writes the `CHANGELOG.md` entry from commits
    since the last changelog change on `develop`. It lists `feat` subjects
-   under Features and `fix` subjects under Bug Fixes.
+   under Features and `fix` subjects under Bug Fixes. It leaves out a change
+   whose line an earlier release already lists.
 3. Open the pull request from the branch into `main` and review it. Check
    that the version fits the changes and that every changelog line is
    accurate. This review is the human gate.

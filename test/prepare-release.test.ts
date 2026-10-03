@@ -138,6 +138,74 @@ it("excludes changes already released when the latest tag is not on develop", ()
     expect(changelog.split("## 0.2.0")[0]).not.toContain("previous fix");
 });
 
+it("excludes released changes when a squashed release is merged back into develop", () => {
+    const dir = releaseFixture();
+    const git = (...args: string[]) =>
+        execFileSync(
+            "git",
+            [
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                ...args,
+            ],
+            { cwd: dir },
+        );
+    const prepare = (version: string) =>
+        execFileSync(
+            "bun",
+            [join(dir, "scripts/prepare-release.mjs"), version],
+            {
+                cwd: dir,
+            },
+        );
+    const change = (file: string, subject: string) => {
+        writeFileSync(join(dir, file), subject);
+        git("add", file);
+        commit(dir, subject);
+    };
+    git("switch", "-q", "-c", "develop");
+    change("old.txt", "fix: previous fix (#1)");
+    prepare("0.2.0");
+    git("add", "package.json", "CHANGELOG.md");
+    commit(dir, "chore(release): prepare 0.2.0");
+    git("switch", "-q", "-c", "main", "v0.1.0");
+    git("merge", "--squash", "develop");
+    commit(dir, "chore(release): prepare 0.2.0 (#2)");
+    git("tag", "v0.2.0");
+    git("switch", "-q", "develop");
+    change("released.txt", "fix: released fix (#3)");
+    git("switch", "-q", "-c", "release/0.2.1");
+    prepare("0.2.1");
+    git("add", "package.json", "CHANGELOG.md");
+    commit(dir, "chore(release): prepare 0.2.1");
+    git("switch", "-q", "main");
+    git("checkout", "release/0.2.1", "--", "package.json", "CHANGELOG.md");
+    commit(dir, "chore(release): prepare 0.2.1 (#4)");
+    git("tag", "v0.2.1");
+    git("switch", "-q", "develop");
+    git(
+        "merge",
+        "-q",
+        "-X",
+        "theirs",
+        "main",
+        "-m",
+        "chore(release): merge 0.2.1 back into develop",
+    );
+    change("new.txt", "feat: new thing (#5)");
+
+    prepare("0.3.0");
+    const section = readFileSync(join(dir, "CHANGELOG.md"), "utf8").split(
+        "## 0.2.1",
+    )[0];
+    expect(section).toContain("## 0.3.0 (");
+    expect(section).toContain("- new thing (#5)");
+    expect(section).not.toContain("released fix");
+    expect(section).not.toContain("previous fix");
+});
+
 it("includes earlier changes when the changelog has no release entry yet", () => {
     fixture = mkdtempSync(join(tmpdir(), "release-prepare-"));
     mkdirSync(join(fixture, "scripts"));
