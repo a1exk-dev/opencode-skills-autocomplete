@@ -35,3 +35,12 @@
 
 - No release-please: its first run computed 1.0.0 (we need 0.1.0) and its release PR is blocked by the repo's "GitHub Actions is not permitted to create pull requests" setting, which we are not changing. The current process is documented in `docs/agents/changelog.md` (agent) and `docs/releasing.md` (human).
 - npm OIDC trusted publisher shape: org `a1exk-dev`, repo `opencode-skills-autocomplete`, workflow `.github/workflows/release.yml`, `npm publish` allowed (audience `project:a1exk-dev:opencode-skills-autocomplete`). The npm name is claimed by a one-off `0.0.0` publish.
+
+## Vendored skills: deliberate deviations from upstream (2026-10-12)
+
+- `.agents/skills/*` are vendored copies: 17 from `mattpocock/skills` (`skills/<category>/<skill>/`, category is `engineering` except `grilling`, `wait-what`, and `writing-for-agents`, which are `productivity`), and `humanizer` from the root of `blader/humanizer`. Refresh by replacing each directory's files from upstream `main`.
+- Two deviations survive a refresh and must be reapplied:
+  - Upstream names the glossary `GLOSSARY.md` (and `GLOSSARY-MAP.md`, `GLOSSARY-FORMAT.md`). This repo keeps `CONTEXT.md`, so rename every reference back after pulling. Affects `domain-modeling` (including its `CONTEXT-FORMAT.md` filename), `wait-what`, `triage`, `codebase-design`, `improve-codebase-architecture`, `tdd`.
+  - `wait-what` upstream carries `disable-model-invocation: true`, which would stop an agent from running the root `AGENTS.md` writing rule. Drop that line from the vendored copy. Its `agents/openai.yaml` still sets `allow_implicit_invocation: false`, so OpenCode treats the skill as user-invoked only.
+- `setup-matt-pocock-skills` is intentionally not vendored. Six skills name it as a fallback for a repo that has not been set up; `docs/agents/` already holds that setup.
+- `cspell` reads only `**/*.md` outside `.agents/`, so vendored skill text does not gate CI.
