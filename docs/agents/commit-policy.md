@@ -1,6 +1,7 @@
 # Commit policy
 
 - Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Scopes are optional.
+- The commit type and a `!` marker decide the next release version. Read the versioning rules in [git-workflow.md](git-workflow.md) before choosing them; on the `1.x` line a `feat` commit is a policy error.
 - Include a `Refs: #<issue-number>` footer in commits for issue branches.
 - Apply the commit format and approval policy to every commit, including merge commits; this policy overrides skill defaults.
 - Include the proposed message in the review answer's `wait-what` and `humanizer` pass. After approval, use the reviewed message without rewriting it.
