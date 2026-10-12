@@ -25,6 +25,21 @@ the npm package, and checks that the records agree.
    since the last changelog change on `develop`. It lists `feat` subjects
    under Features and `fix` subjects under Bug Fixes. It leaves out a change
    whose line an earlier release already lists.
+
+   Some releases need to say something the commit subjects cannot, such as
+   that nothing changed for most users, or that the release stops loading
+   on an older version of opencode. Write that text in a file and name it
+   on the command line:
+
+   ```
+   bun run release:prepare <version> --note-file release-note.md
+   ```
+
+   The script puts the text under the version heading, above Features and
+   Bug Fixes. If the release has no features or fixes to list, the note
+   takes the place of "No user-facing changes." Keep it to prose: a line
+   that starts with `- ` gets read back as an already-released change the
+   next time you prepare a release.
 3. Open the pull request from the branch into `main` and review it. Check
    that the version fits the changes and that every changelog line is
    accurate. This review is the human gate.
@@ -49,7 +64,8 @@ After the merge, check:
 
 - The release branch is the only place that changes the `package.json`
   version or `CHANGELOG.md`. Run the prepare script; do not hand-write the
-  entry.
+  entry. A release note is the one piece of prose you write yourself, and
+  the script is still what puts it in the file.
 - Do not edit a published changelog entry, tag, or GitHub Release. Correct
   a small error with a note in the next release's entry; cut a patch
   release for an error that could mislead an operator or contributor.

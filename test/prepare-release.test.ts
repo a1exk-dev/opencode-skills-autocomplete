@@ -250,3 +250,127 @@ it("restores the package version when the changelog write fails", () => {
     expect(readFileSync(pkg, "utf8")).toBe(previousPackage);
     expect(readFileSync(changelog, "utf8")).toBe(previousChangelog);
 });
+
+it("places a release note under the version heading and above the sections", () => {
+    const dir = releaseFixture();
+    writeFileSync(join(dir, "fix.txt"), "keep skill selection");
+    execFileSync("git", ["add", "fix.txt"], { cwd: dir });
+    commit(dir, "fix: keep skill selection");
+    const notePath = join(dir, "release-note.md");
+    writeFileSync(
+        notePath,
+        "\nThis release adds support for nothing new.\n\nIt is the last one to do so.\n\n",
+    );
+
+    const result = spawnSync(
+        "bun",
+        [
+            join(dir, "scripts/prepare-release.mjs"),
+            "0.1.1",
+            "--note-file",
+            notePath,
+        ],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(dir, "CHANGELOG.md"), "utf8")).toMatch(
+        /^# Changelog\n\n## 0\.1\.1 \(\d{4}-\d{2}-\d{2}\)\n\nThis release adds support for nothing new\.\n\nIt is the last one to do so\.\n\n### Bug Fixes\n\n- keep skill selection/,
+    );
+});
+
+it("uses the release note in place of the no-changes line", () => {
+    const dir = releaseFixture();
+    writeFileSync(join(dir, "chore.txt"), "refresh skills");
+    execFileSync("git", ["add", "chore.txt"], { cwd: dir });
+    commit(dir, "chore: refresh skills");
+    const notePath = join(dir, "release-note.md");
+    writeFileSync(notePath, "Only the declared host range changed.\n");
+
+    const result = spawnSync(
+        "bun",
+        [
+            join(dir, "scripts/prepare-release.mjs"),
+            "0.1.1",
+            "--note-file",
+            notePath,
+        ],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).toBe(0);
+    const changelog = readFileSync(join(dir, "CHANGELOG.md"), "utf8");
+    expect(changelog).toContain("Only the declared host range changed.");
+    expect(changelog).not.toContain("No user-facing changes.");
+});
+
+it("keeps the no-changes line when no release note is given", () => {
+    const dir = releaseFixture();
+    writeFileSync(join(dir, "chore.txt"), "refresh skills");
+    execFileSync("git", ["add", "chore.txt"], { cwd: dir });
+    commit(dir, "chore: refresh skills");
+
+    const result = spawnSync(
+        "bun",
+        [join(dir, "scripts/prepare-release.mjs"), "0.1.1"],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(dir, "CHANGELOG.md"), "utf8")).toContain(
+        "No user-facing changes.",
+    );
+});
+
+it("leaves both files untouched when the release note file is missing", () => {
+    const dir = releaseFixture();
+    const pkg = join(dir, "package.json");
+    const changelog = join(dir, "CHANGELOG.md");
+    const previousPackage = readFileSync(pkg, "utf8");
+    const previousChangelog = readFileSync(changelog, "utf8");
+
+    const result = spawnSync(
+        "bun",
+        [
+            join(dir, "scripts/prepare-release.mjs"),
+            "0.1.1",
+            "--note-file",
+            join(dir, "absent.md"),
+        ],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).not.toBe(0);
+    expect(readFileSync(pkg, "utf8")).toBe(previousPackage);
+    expect(readFileSync(changelog, "utf8")).toBe(previousChangelog);
+});
+
+it("rejects a release note file that holds no text", () => {
+    const dir = releaseFixture();
+    const previousPackage = readFileSync(join(dir, "package.json"), "utf8");
+    const notePath = join(dir, "release-note.md");
+    writeFileSync(notePath, "   \n\n");
+
+    const result = spawnSync(
+        "bun",
+        [
+            join(dir, "scripts/prepare-release.mjs"),
+            "0.1.1",
+            "--note-file",
+            notePath,
+        ],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("no text to use as a release note");
+    expect(readFileSync(join(dir, "package.json"), "utf8")).toBe(
+        previousPackage,
+    );
+});
+
+it("rejects --note-file without a path", () => {
+    const dir = releaseFixture();
+    const result = spawnSync(
+        "bun",
+        [join(dir, "scripts/prepare-release.mjs"), "0.1.1", "--note-file"],
+        { cwd: dir, encoding: "utf8" },
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("--note-file <path>");
+});
