@@ -11,7 +11,14 @@ the npm package, and checks that the records agree.
 
 1. Feature and fix work merges into `develop` as Conventional Commits. The
    commit type decides the bump class: `feat` is minor, `fix` is patch, and
-   before `1.0.0` a breaking change also bumps minor.
+   a breaking change is a new major version.
+
+   The `1.x` line takes bug fixes only. It goes from `1.0.0` to `1.0.1` to
+   `1.0.2` and never reaches `1.1.0`. Anything that adds functionality
+   makes the next release a new major version. The
+   [1.x bug-fix-only ADR](adr/0001-opencode-1x-is-bug-fix-only.md) has the
+   reasons.
+
 2. Cut a `release/<version>` branch from `develop` and run
    `bun run release:prepare <version>` on it. The script sets the
    `package.json` version and writes the `CHANGELOG.md` entry from commits
