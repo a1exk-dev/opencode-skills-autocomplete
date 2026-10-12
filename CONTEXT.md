@@ -15,3 +15,7 @@ _Avoid_: Trigger slash
 **Release preparation**:
 Recording the next product version and its matching changelog entry before publication.
 _Avoid_: Publishing
+
+**Bug fix**:
+A change making something work, or work as expected or claimed. It adds no feature or functionality.
+_Avoid_: Improvement, tweak
