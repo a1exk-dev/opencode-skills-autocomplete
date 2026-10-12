@@ -24,8 +24,8 @@ To pin a version:
 }
 ```
 
-The plugin requires opencode 1.0.137 or newer; older versions skip it at load
-time with a compatibility error.
+The plugin requires opencode 1.15.6 or newer and does not run on opencode 2.x.
+See [opencode version requirement](#opencode-version-requirement).
 
 ## Usage
 
@@ -93,10 +93,23 @@ menu keeps working.
 
 ## opencode version requirement
 
-The plugin declares `engines.opencode: ">=1.0.137"` in its manifest. 1.0.137 is
-the first opencode release that ships the prompt-append primitive the paste
-behavior uses. On older versions the opencode loader skips the plugin with a
-native compatibility error, so it never runs in a half-working state.
+This plugin runs on opencode 1.x, version 1.15.6 or newer. 1.15.6 is the first
+opencode release that ships every TUI API the plugin calls, and the manifest
+declares `engines.opencode: ">=1.15.6"`.
+
+On an older opencode 1.x the loader skips the plugin and says nothing: the
+reason goes to standard error, which the TUI never shows. The symptom is a `/`
+menu with no skill rows, so check your opencode version first.
+
+This plugin does not run on opencode 2.x, which renames the plugin contract.
+opencode 2.x installs the plugin, loads it, and then shows a "Plugin failed"
+toast. Supporting 2.x needs a rewrite against the new contract and will come in
+a later major version of this plugin. There is no date for it.
+
+1.0.0 is the last release to add opencode 1.x support. From here the 1.x line
+takes bug fixes only. The
+[1.x bug-fix-only ADR](docs/adr/0001-opencode-1x-is-bug-fix-only.md) has the
+reasoning.
 
 ## Development
 
