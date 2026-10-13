@@ -102,7 +102,7 @@ function readKeybind(
     return { ok: true, match };
 }
 
-function chordBinding(
+function shortcutBinding(
     api: Pick<TuiPluginApi, "keymap" | "tuiConfig" | "ui">,
     options: Record<string, unknown> | undefined,
 ): { key: string; cmd: string } | undefined {
@@ -174,7 +174,7 @@ const tui: TuiPlugin = async (api, options) => {
             await api.client.tui.appendPrompt({ text: pasteText(skill.name) });
         },
     }));
-    const binding = chordBinding(api, options);
+    const binding = shortcutBinding(api, options);
     api.keymap.registerLayer({ commands, bindings: binding ? [binding] : [] });
     const keypress = (key: KeyEvent) => {
         const editor = api.renderer.currentFocusedEditor;

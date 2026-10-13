@@ -26,8 +26,8 @@ bun install
 ## Layout
 
 - `src/tui.ts` is the single plugin entry. It registers skill commands,
-  handles a standalone `/` in the prompt, and binds the chord. Its helpers stay
-  private to the file.
+  handles a standalone `/` in the prompt, and binds the shortcut. Its helpers
+  stay private to the file.
 - `test/tui.test.ts` exercises skill selection through the plugin entry with
   a simulated `TuiPluginApi`.
 - `test/prepare-release.test.ts` runs release preparation against a temporary
