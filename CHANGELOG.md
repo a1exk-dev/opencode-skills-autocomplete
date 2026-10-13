@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 (2026-10-13)
+
+1.0.0 is the last release to add support for opencode 1.x, and adds no new
+behavior over 0.3.0. From here the 1.x line takes bug fixes only. opencode 2.x
+renames the plugin contract and is not supported; that support will come in a
+later major version.
+
+The declared opencode range narrows to `>=1.15.6`, the oldest version the
+plugin ever actually worked on. On opencode 1.0.137 through 1.15.5 it now stops
+loading instead of failing partway through.
+
+### Bug Fixes
+
+- reject a hotkey the shortcut cannot use (#32)
+- narrow the declared opencode range to the proven floor (#28)
+
 ## 0.3.0 (2026-10-03)
 
 ### Features
