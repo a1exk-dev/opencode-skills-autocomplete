@@ -194,6 +194,18 @@ describe("plugin entry", () => {
         expect(plugin.id).toBe("opencode-skills-autocomplete");
     });
 
+    it("carries id, tui and setup so both opencode majors accept the module", () => {
+        expect(plugin.id).toBe("opencode-skills-autocomplete");
+        expect(typeof plugin.tui).toBe("function");
+        expect(typeof plugin.setup).toBe("function");
+    });
+
+    it("throws the 1.x-only notice so a 2.x host prints it instead of its own", () => {
+        expect(() => plugin.setup()).toThrow(
+            "opencode-skills-autocomplete 1.x supports opencode 1.x only. Support for opencode 2.x will come in a later major version of this plugin.",
+        );
+    });
+
     it("registers one palette command per skill, A to Z, with origin tags", async () => {
         const { api, layers } = mockApi(skills);
         await plugin.tui(api, undefined, {} as TuiPluginMeta);
