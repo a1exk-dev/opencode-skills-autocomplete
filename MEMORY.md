@@ -16,7 +16,16 @@
 ## opencode TUI plugin: built-in slash menu and plain slashes (2026-10-04)
 
 - OpenCode 1.18.34 also opens the built-in menu for a `/` typed at position 0 before text and for a `/` typed inside the first word. The quiet insert in `src/tui.ts` keeps it closed in both cases, and it closes a menu that is already open when the `/` lands at position 0. Typing or backspacing inside that leading word later still reopens the menu.
-- Live-test with tmux: `XDG_CONFIG_HOME=<scratch> opencode`, where `<scratch>/opencode/tui.json` lists only the `file://` build, so the globally installed copy does not also handle keys. A run with no plugin shows the unmodified behavior. `ctrl+u` deletes only to the cursor, so restart the session between cases instead of clearing the prompt.
+- Live-test with tmux: `XDG_CONFIG_HOME=<scratch> opencode`, where `<scratch>/opencode/tui.json` lists only the `file://` build, so the globally installed copy does not also handle keys. A run with no plugin shows the unmodified behavior. `ctrl+u` deletes only to the cursor, so clear a prompt with `End` first and `ctrl+u` second, or restart the session between cases. Switching models mid-session opens a Select variant dialog that swallows every keystroke until `Esc`.
+
+## opencode 2.x load path, verified live (2026-10-12)
+
+- Sandbox a 2.x host without disturbing the installed 1.x one: `npm install @opencode/cli@2.0.27` into a scratch directory, then run `node_modules/.bin/opencode` with `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME` and `XDG_STATE_HOME` all pointed inside that tree. 2.0.27 honours all four, so the real `~/.config/opencode` and `~/.cache/opencode` stay untouched. npm blocks the package's `postinstall` and the binary still runs.
+- Given a config holding only a `tui.json`, the first launch writes `cli.json` next to it with `plugins: ["<name>"]` and leaves `tui.json` in place, then installs the package into `$XDG_CACHE_HOME/opencode/npm/<name>@latest/<ms-epoch>/node_modules/<name>/`. The generation directory is a millisecond epoch rather than a sequence number, and `npm/` is a separate root from 1.x's `packages/`.
+- A v1-shaped `{ id, tui }` default export fails in three places at once: an error toast (`Plugin failed: <name>` / `Run /plugins to view details.`) that appears about two seconds after launch and lasts about five, a persistent `1 plugin failed /plugins` item in the status bar, and a `/plugins` row marked `failed` whose dialog is titled "TUI plugin error" and reads `Invalid V2 TUI plugin module: <name>`.
+- `export default { id, tui, setup }` satisfies both hosts from one file. On 1.19.0 the plugin loads and the skill rows work, `setup` untouched; on 2.0.27 `setup` runs, `/plugins` lists the plugin as loaded with a `disable` action, and the status-bar failure item is gone.
+- `context.ui.toast.show({ variant, title, message })` called from `setup` reaches the screen. The message wraps across the toast box instead of being clipped, and `variant: "warning"` draws an amber border (RGB 245,167,66). The cost of being accepted is that the persistent status-bar item disappears, so a user who misses the five-second toast has nothing left to read.
+- Patching the cached copy swaps the live module on 2.x as it does on 1.x: rename `<generation>/node_modules/<name>/dist/tui.js` aside and write a wrapper that re-exports it with the extra key. A running session keeps the old code until restart.
 
 ## opencode TUI plugin: loading gotchas (2026-09-28)
 
