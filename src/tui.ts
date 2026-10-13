@@ -230,4 +230,18 @@ const tui: TuiPlugin = async (api, options) => {
 // plugin id is the same in both load modes.
 const id = "opencode-skills-autocomplete";
 
-export default { id, tui };
+const SUPPORT_NOTICE =
+    "opencode-skills-autocomplete 1.x supports opencode 1.x only. Support for opencode 2.x will come in a later major version of this plugin.";
+
+// opencode 2.x renames the plugin contract: it reads the same "./tui" export,
+// then requires a `setup` key and rejects the 1.x shape with a message of its
+// own. Carrying the key lets this notice replace that message. Throwing is the
+// only way to deliver it: 2.x keeps a "1 plugin failed" item in the status bar
+// and prints our text in the /plugins error dialog, while a toast raised from
+// here is discarded in favour of opencode's own (verified on 2.0.27). opencode
+// 1.x never calls `setup`, so nothing here runs on a supported host.
+const setup = () => {
+    throw new Error(SUPPORT_NOTICE);
+};
+
+export default { id, tui, setup };
