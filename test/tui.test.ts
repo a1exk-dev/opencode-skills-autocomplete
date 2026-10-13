@@ -271,7 +271,7 @@ describe("plugin entry", () => {
         expect(appended).toEqual(["/Beta "]);
     });
 
-    it("opens the palette with the default chord when ctrl+k is bound by the editor", async () => {
+    it("opens the palette with the default shortcut when ctrl+k is bound by the editor", async () => {
         const { api, layers, toasts } = mockApi(skills, {
             boundKeys: ["ctrl+k"],
         });
@@ -301,7 +301,7 @@ describe("plugin entry", () => {
         cleanup();
     });
 
-    it("uses the hotkey option as the chord key", async () => {
+    it("uses the hotkey option as the shortcut key", async () => {
         const { api, layers } = mockApi(skills);
         await plugin.tui(api, { hotkey: "ctrl+shift+k" }, {} as TuiPluginMeta);
         expect(layers[0].bindings).toEqual([
@@ -309,7 +309,7 @@ describe("plugin entry", () => {
         ]);
     });
 
-    it("trims the hotkey option before registering the chord", async () => {
+    it("trims the hotkey option before registering the shortcut", async () => {
         const { api, layers } = mockApi(skills);
         await plugin.tui(
             api,
@@ -321,7 +321,7 @@ describe("plugin entry", () => {
         ]);
     });
 
-    it("warns once and skips the chord when the key is already bound", async () => {
+    it("warns once and skips the shortcut when the key is already bound", async () => {
         const { api, layers, toasts } = mockApi(skills, {
             boundKeys: ["ctrl+s"],
         });
@@ -369,7 +369,7 @@ describe("plugin entry", () => {
         ],
         ["f5", 'hotkey "f5" will not work, single keys are not allowed'],
     ])(
-        "warns once and skips the chord for hotkey %j",
+        "warns once and skips the shortcut for hotkey %j",
         async (hotkey, message) => {
             const { api, layers, toasts } = mockApi(skills);
             await plugin.tui(api, { hotkey }, {} as TuiPluginMeta);
@@ -379,7 +379,7 @@ describe("plugin entry", () => {
         },
     );
 
-    it("warns once and skips the chord when the bound key is spelled differently", async () => {
+    it("warns once and skips the shortcut when the bound key is spelled differently", async () => {
         const { api, layers, toasts } = mockApi(skills, {
             boundKeys: ["meta+k"],
         });
@@ -394,7 +394,7 @@ describe("plugin entry", () => {
         expect(layers[0].commands ?? []).toHaveLength(3);
     });
 
-    it("warns once and skips the chord when the hotkey option is not a string", async () => {
+    it("warns once and skips the shortcut when the hotkey option is not a string", async () => {
         const { api, layers, toasts } = mockApi(skills);
         await plugin.tui(api, { hotkey: 42 }, {} as TuiPluginMeta);
         expect(toasts).toEqual([

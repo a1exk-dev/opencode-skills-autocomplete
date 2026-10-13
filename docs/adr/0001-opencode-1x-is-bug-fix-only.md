@@ -53,5 +53,5 @@ reach the 1.x line at all.
 - **Refuse any fix that changes documented behavior.** Rejected: the next major
   drops opencode 1.x, so a defect 1.x cannot ship a fix for is one those users
   never get fixed by anyone. It would also have blocked the 0.2.0 fix that
-  moved the default chord off `ctrl+k`, where the documented default was itself
-  the defect.
+  moved the default shortcut off `ctrl+k`, where the documented default was
+  itself the defect.
