@@ -1,7 +1,7 @@
 {
     "name": "opencode-skills-autocomplete",
-    "version": "0.3.0",
-    "description": "opencode plugin that lists every available skill as a row in the / menu and adds a configurable chord shortcut to the skill list.",
+    "version": "1.0.0",
+    "description": "opencode plugin that lists every available skill as a row in the / menu and adds a configurable keyboard shortcut to the skill list.",
     "engines": {
         "opencode": ">=1.15.6"
     },

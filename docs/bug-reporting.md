@@ -17,9 +17,8 @@ It asks for:
 - the opencode version, from `opencode --version`
 - the version of the plugin in use
 
-For chord problems, include the `hotkey` value you configured. Collision and
-invalid-key warnings name the key in the toast message, so quote the message
-you saw.
+For shortcut problems, include the `hotkey` value you configured. The warning
+toast names the reason the key was refused, so quote the message you saw.
 
 ## Triage
 
