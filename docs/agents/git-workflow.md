@@ -10,7 +10,7 @@
 
 ## Releases
 
-- Version the repository as one product using [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
-- Make `v0.1.0` the first release after the project has a minimally usable baseline. Before `1.0.0`, increment patch for fixes and minor for features or breaking changes; release `1.0.0` only after an explicit stability decision.
+- Version the repository as one product using [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html): a bug fix bumps patch, a feature bumps minor, and a breaking change bumps major.
+- Treat the `1.x` line as bug-fix-only: it runs `1.0.0`, `1.0.1`, `1.0.2` and never reaches `1.1.0`. A `feat` commit on a `1.x` release or hotfix branch is a policy error, and a `feat` merged into `develop` after `1.0.0` commits the next release to `2.0.0`. Read [the 1.x bug-fix-only ADR](../adr/0001-opencode-1x-is-bug-fix-only.md) for the reasoning.
 - Use annotated `v<version>` tags on `main` as the canonical version source.
 - Create a release branch after every required milestone issue is closed and `develop` meets the milestone completion criteria. Limit the branch to release preparation and fixes found during verification.

@@ -32,10 +32,10 @@ describe("plugin entry", () => {
         preventDefault: () => void;
     };
 
-    function mockApi(
-        skills: Skill[],
-        extra: { boundKeys?: string[]; invalidKeys?: string[] } = {},
-    ) {
+    // Parsing is stateless, so every mock api shares one real keymap.
+    const { keymap: hostParser } = createTestKeymap({ defaultKeys: true });
+
+    function mockApi(skills: Skill[], extra: { boundKeys?: string[] } = {}) {
         const layers: RegisteredLayer[] = [];
         const appended: string[] = [];
         const toasts: { variant?: string; message: string }[] = [];
@@ -154,14 +154,10 @@ describe("plugin entry", () => {
                     layers.push(layer);
                     return () => {};
                 },
-                parseKeySequence: (key: string) => {
-                    if (key === "")
-                        throw new Error(
-                            "Invalid key sequence: sequence cannot be empty",
-                        );
-                    if (extra.invalidKeys?.includes(key)) return [];
-                    return [{ stroke: {}, display: key, match: {} }];
-                },
+                // The real parser decides what a keybind string means; a
+                // hand-rolled stand-in is how the k+k bug stayed green.
+                parseKeySequence: (key: string) =>
+                    hostParser.parseKeySequence(key),
             },
             lifecycle: {
                 signal: {},
@@ -196,6 +192,18 @@ describe("plugin entry", () => {
 
     it("exports the package name as the plugin id for file-path loading", () => {
         expect(plugin.id).toBe("opencode-skills-autocomplete");
+    });
+
+    it("carries id, tui and setup so both opencode majors accept the module", () => {
+        expect(plugin.id).toBe("opencode-skills-autocomplete");
+        expect(typeof plugin.tui).toBe("function");
+        expect(typeof plugin.setup).toBe("function");
+    });
+
+    it("throws the 1.x-only notice so a 2.x host prints it instead of its own", () => {
+        expect(() => plugin.setup()).toThrow(
+            "opencode-skills-autocomplete 1.x supports opencode 1.x only. Support for opencode 2.x will come in a later major version of this plugin.",
+        );
     });
 
     it("registers one palette command per skill, A to Z, with origin tags", async () => {
@@ -263,7 +271,7 @@ describe("plugin entry", () => {
         expect(appended).toEqual(["/Beta "]);
     });
 
-    it("opens the palette with the default chord when ctrl+k is bound by the editor", async () => {
+    it("opens the palette with the default shortcut when ctrl+k is bound by the editor", async () => {
         const { api, layers, toasts } = mockApi(skills, {
             boundKeys: ["ctrl+k"],
         });
@@ -293,7 +301,7 @@ describe("plugin entry", () => {
         cleanup();
     });
 
-    it("uses the hotkey option as the chord key", async () => {
+    it("uses the hotkey option as the shortcut key", async () => {
         const { api, layers } = mockApi(skills);
         await plugin.tui(api, { hotkey: "ctrl+shift+k" }, {} as TuiPluginMeta);
         expect(layers[0].bindings).toEqual([
@@ -301,7 +309,7 @@ describe("plugin entry", () => {
         ]);
     });
 
-    it("trims the hotkey option before registering the chord", async () => {
+    it("trims the hotkey option before registering the shortcut", async () => {
         const { api, layers } = mockApi(skills);
         await plugin.tui(
             api,
@@ -313,7 +321,7 @@ describe("plugin entry", () => {
         ]);
     });
 
-    it("warns once and skips the chord when the key is already bound", async () => {
+    it("warns once and skips the shortcut when the key is already bound", async () => {
         const { api, layers, toasts } = mockApi(skills, {
             boundKeys: ["ctrl+s"],
         });
@@ -321,52 +329,78 @@ describe("plugin entry", () => {
         expect(toasts).toEqual([
             {
                 variant: "warning",
-                message:
-                    'hotkey "ctrl+s" is already bound; chord skipped, the / menu still works',
+                message: 'hotkey "ctrl+s" will not work, it is already bound',
             },
         ]);
         expect(layers[0].bindings ?? []).toHaveLength(0);
         expect(layers[0].commands ?? []).toHaveLength(3);
     });
 
-    it("warns once and skips the chord for an unparseable hotkey", async () => {
-        const { api, layers, toasts } = mockApi(skills);
-        await plugin.tui(api, { hotkey: "   " }, {} as TuiPluginMeta);
-        expect(toasts).toEqual([
-            {
-                variant: "warning",
-                message:
-                    'hotkey "" is not a valid keybind; chord skipped, the / menu still works',
-            },
-        ]);
-        expect(layers[0].bindings ?? []).toHaveLength(0);
-        expect(layers[0].commands ?? []).toHaveLength(3);
+    it("registers a hotkey the real keymap reads as one modified keypress", async () => {
+        for (const hotkey of ["ctrl+s", "Ctrl+S", "shift+tab", "ctrl+space"]) {
+            const { api, layers, toasts } = mockApi(skills);
+            await plugin.tui(api, { hotkey }, {} as TuiPluginMeta);
+            expect(toasts).toEqual([]);
+            expect(layers[0].bindings).toEqual([
+                { key: hotkey, cmd: "command.palette.show" },
+            ]);
+        }
     });
 
-    it("warns once and skips the chord for a hotkey with an unknown token", async () => {
+    // The real keymap reads each of these as something other than one
+    // modified keypress, which the earlier hand-rolled parser hid: "k+k" and
+    // "notakey" are runs of keypresses that swallow their first key, and a
+    // bare "k", "space" or "escape" binds a key the prompt needs.
+    it.each([
+        ["   ", 'hotkey "" will not work, opencode does not know that key'],
+        [
+            "<leader>k",
+            'hotkey "<leader>k" will not work, opencode does not know that key',
+        ],
+        ["k+k", 'hotkey "k+k" will not work, it is more than one key'],
+        ["notakey", 'hotkey "notakey" will not work, it is more than one key'],
+        ["mod+k", 'hotkey "mod+k" will not work, it is more than one key'],
+        ["k", 'hotkey "k" will not work, single keys are not allowed'],
+        ["K", 'hotkey "K" will not work, single keys are not allowed'],
+        ["space", 'hotkey "space" will not work, single keys are not allowed'],
+        [
+            "escape",
+            'hotkey "escape" will not work, single keys are not allowed',
+        ],
+        ["f5", 'hotkey "f5" will not work, single keys are not allowed'],
+    ])(
+        "warns once and skips the shortcut for hotkey %j",
+        async (hotkey, message) => {
+            const { api, layers, toasts } = mockApi(skills);
+            await plugin.tui(api, { hotkey }, {} as TuiPluginMeta);
+            expect(toasts).toEqual([{ variant: "warning", message }]);
+            expect(layers[0].bindings ?? []).toHaveLength(0);
+            expect(layers[0].commands ?? []).toHaveLength(3);
+        },
+    );
+
+    it("warns once and skips the shortcut when the bound key is spelled differently", async () => {
         const { api, layers, toasts } = mockApi(skills, {
-            invalidKeys: ["mod+k"],
+            boundKeys: ["meta+k"],
         });
-        await plugin.tui(api, { hotkey: "mod+k" }, {} as TuiPluginMeta);
+        await plugin.tui(api, { hotkey: "alt+k" }, {} as TuiPluginMeta);
         expect(toasts).toEqual([
             {
                 variant: "warning",
-                message:
-                    'hotkey "mod+k" is not a valid keybind; chord skipped, the / menu still works',
+                message: 'hotkey "alt+k" will not work, it is already bound',
             },
         ]);
         expect(layers[0].bindings ?? []).toHaveLength(0);
         expect(layers[0].commands ?? []).toHaveLength(3);
     });
 
-    it("warns once and skips the chord when the hotkey option is not a string", async () => {
+    it("warns once and skips the shortcut when the hotkey option is not a string", async () => {
         const { api, layers, toasts } = mockApi(skills);
         await plugin.tui(api, { hotkey: 42 }, {} as TuiPluginMeta);
         expect(toasts).toEqual([
             {
                 variant: "warning",
-                message:
-                    "hotkey must be a string; chord skipped, the / menu still works",
+                message: "hotkey will not work, it must be text",
             },
         ]);
         expect(layers[0].bindings ?? []).toHaveLength(0);

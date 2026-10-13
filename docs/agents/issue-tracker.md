@@ -12,8 +12,9 @@ Use the `gh` CLI for all operations. If the project number changes, resolve it: 
 ## Draft items (internal work)
 
 - **Create**: `gh project item-create 3 --owner a1exk-dev --title "..." --body "..."`
-- **List**: `gh project item-list 3 --owner a1exk-dev --format json` — items carry a node `id` (`PVTI_...`) used for edits.
-- **Edit**: `gh project item-edit 3 --owner a1exk-dev --id <PVTI_id> --field "Status" --value "Todo|In Progress|Done"` (also `--title`, `--body`, `--clear`)
+- **List**: `gh project item-list 3 --owner a1exk-dev --format json --limit 100` — each item carries `.id` (the item id, `PVTI_...`), `.status`, `.title`, and `.content` with the draft issue's `.content.id` (the content id, `DI_...`) and full `.content.body`. Read bodies from here; no GraphQL call is needed. `--limit` defaults to 30.
+- **Edit a field**: `gh project item-edit --id <PVTI_id> --project-id PVT_kwHOANlzg84Bky-J --field-id <field_id> --single-select-option-id <option_id>`. Resolve the ids with `gh project field-list 3 --owner a1exk-dev --format json`. The `--field`/`--value` name form cannot be combined with `--id` — it addresses the item by `--url`, which a draft item does not have — so use the id form.
+- **Edit the title or body**: `gh project item-edit --id <DI_id> --body "..."` (also `--title`). These two flags take the **content** id, not the item id; passing `PVTI_...` fails with "ID must be the ID of the draft issue content which is prefixed with `DI_`".
 - **Delete**: `gh project item-delete 3 --owner a1exk-dev --id <PVTI_id>`
 
 The project's Status field has exactly three options: `Todo`, `In Progress`, `Done`.
@@ -34,7 +35,7 @@ Create a draft item in the "opencode-skills-autocomplete" project. Never create 
 
 ## When a skill says "fetch the relevant ticket"
 
-Draft item: `gh project item-list 3 --owner a1exk-dev --format json`, match by title, edit via `--id`. Public issue/PR: `gh issue|pr view <n> --comments`.
+Draft item: `gh project item-list 3 --owner a1exk-dev --format json --limit 100`, match by title, read `.content.body`, and edit with the id the flag calls for (`PVTI_` for a field, `DI_` for the title or body). Public issue/PR: `gh issue|pr view <n> --comments`.
 
 ## Wayfinding operations
 

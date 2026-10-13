@@ -24,8 +24,8 @@ To pin a version:
 }
 ```
 
-The plugin requires opencode 1.0.137 or newer; older versions skip it at load
-time with a compatibility error.
+The plugin requires opencode 1.15.6 or newer and does not run on opencode 2.x.
+See [opencode version requirement](#opencode-version-requirement).
 
 ## Usage
 
@@ -70,7 +70,7 @@ The rule covers opencode's own `/` menu too:
   menu.
 - Typing more characters in that first word can open the menu again.
 
-### Chord shortcut
+### Keyboard shortcut
 
 `ctrl+s` by default opens the command palette without typing `/`. OpenCode
 uses `ctrl+k` to delete to the end of the input line, so the plugin cannot use
@@ -79,7 +79,7 @@ the `hotkey` option below.
 
 ### The `hotkey` option
 
-The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
+The shortcut takes a single opencode keybind and defaults to `ctrl+s`:
 
 ```json
 {
@@ -87,16 +87,33 @@ The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
 }
 ```
 
-If the key is already bound in your effective keybinds, or the value is not a
-valid keybind, the plugin shows a warning toast and skips the chord. The `/`
-menu keeps working.
+It has to be one keypress with a modifier held, so `ctrl+shift+k` works. `k+k`
+is two keys in a row, and a bare `k`, `space`, or `escape` would swallow that
+key as you type.
+
+If the key is already bound in your effective keybinds, or it cannot be a
+shortcut, the plugin shows a warning toast naming the reason and leaves the
+shortcut off. The `/` menu keeps working.
 
 ## opencode version requirement
 
-The plugin declares `engines.opencode: ">=1.0.137"` in its manifest. 1.0.137 is
-the first opencode release that ships the prompt-append primitive the paste
-behavior uses. On older versions the opencode loader skips the plugin with a
-native compatibility error, so it never runs in a half-working state.
+This plugin runs on opencode 1.x, version 1.15.6 or newer. 1.15.6 is the first
+opencode release that ships every TUI API the plugin calls, and the manifest
+declares `engines.opencode: ">=1.15.6"`.
+
+On an older opencode 1.x the loader skips the plugin and says nothing: the
+reason goes to standard error, which the TUI never shows. The symptom is a `/`
+menu with no skill rows, so check your opencode version first.
+
+This plugin does not run on opencode 2.x, which renames the plugin contract.
+opencode 2.x installs the plugin, loads it, and then shows a "Plugin failed"
+toast. Supporting 2.x needs a rewrite against the new contract and will come in
+a later major version of this plugin. There is no date for it.
+
+1.0.0 is the last release to add opencode 1.x support. From here the 1.x line
+takes bug fixes only. The
+[1.x bug-fix-only ADR](docs/adr/0001-opencode-1x-is-bug-fix-only.md) has the
+reasoning.
 
 ## Development
 
@@ -146,10 +163,11 @@ one user-level, one project-level, and one built-in skill.
 10. Press `ctrl+s`, or your configured hotkey. The command palette opens with
     the same rows.
 11. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
-    A warning toast appears, the chord does nothing, and the `/` menu still
-    works.
-12. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
-    restart. Same warn-and-skip behavior.
+    A toast reads `hotkey "ctrl+p" will not work, it is already bound`, the
+    key does what it did before, and the `/` menu still works.
+12. Set `hotkey` to `k+k`, restart, and do it again with a bare `k`. The
+    toasts read `it is more than one key` and `single keys are not allowed`,
+    and typing `k` still reaches the prompt.
 
 ## Listing the plugin
 

@@ -11,13 +11,35 @@ the npm package, and checks that the records agree.
 
 1. Feature and fix work merges into `develop` as Conventional Commits. The
    commit type decides the bump class: `feat` is minor, `fix` is patch, and
-   before `1.0.0` a breaking change also bumps minor.
+   a breaking change is a new major version.
+
+   The `1.x` line takes bug fixes only. It goes from `1.0.0` to `1.0.1` to
+   `1.0.2` and never reaches `1.1.0`. Anything that adds functionality
+   makes the next release a new major version. The
+   [1.x bug-fix-only ADR](adr/0001-opencode-1x-is-bug-fix-only.md) has the
+   reasons.
+
 2. Cut a `release/<version>` branch from `develop` and run
    `bun run release:prepare <version>` on it. The script sets the
    `package.json` version and writes the `CHANGELOG.md` entry from commits
    since the last changelog change on `develop`. It lists `feat` subjects
    under Features and `fix` subjects under Bug Fixes. It leaves out a change
    whose line an earlier release already lists.
+
+   Some releases need to say something the commit subjects cannot, such as
+   that nothing changed for most users, or that the release stops loading
+   on an older version of opencode. Write that text in a file and name it
+   on the command line:
+
+   ```
+   bun run release:prepare <version> --note-file release-note.md
+   ```
+
+   The script puts the text under the version heading, above Features and
+   Bug Fixes. If the release has no features or fixes to list, the note
+   takes the place of "No user-facing changes." Keep it to prose: a line
+   that starts with `- ` gets read back as an already-released change the
+   next time you prepare a release.
 3. Open the pull request from the branch into `main` and review it. Check
    that the version fits the changes and that every changelog line is
    accurate. This review is the human gate.
@@ -42,7 +64,8 @@ After the merge, check:
 
 - The release branch is the only place that changes the `package.json`
   version or `CHANGELOG.md`. Run the prepare script; do not hand-write the
-  entry.
+  entry. A release note is the one piece of prose you write yourself, and
+  the script is still what puts it in the file.
 - Do not edit a published changelog entry, tag, or GitHub Release. Correct
   a small error with a note in the next release's entry; cut a patch
   release for an error that could mislead an operator or contributor.
