@@ -45,6 +45,13 @@
 - No release-please: its first run computed 1.0.0 (we need 0.1.0) and its release PR is blocked by the repo's "GitHub Actions is not permitted to create pull requests" setting, which we are not changing. The current process is documented in `docs/agents/changelog.md` (agent) and `docs/releasing.md` (human).
 - npm OIDC trusted publisher shape: org `a1exk-dev`, repo `opencode-skills-autocomplete`, workflow `.github/workflows/release.yml`, `npm publish` allowed (audience `project:a1exk-dev:opencode-skills-autocomplete`). The npm name is claimed by a one-off `0.0.0` publish.
 
+## Release merges: squash, and what the backmerge costs (2026-10-13)
+
+- A release pull request into `main` is squash-merged, so `main`'s release commit has **one parent** and carries the whole diff since the previous release, although `changelog.md` step 4 asks for a no-fast-forward merge commit. `develop` is therefore never an ancestor of `main`, which is why every release needs the explicit backmerge branch.
+- That shape makes the backmerge conflict on **every change the release branch added beyond the generated `CHANGELOG.md` and `package.json` lines**, because `develop` holds those same changes under different commits. Resolve each hunk in favour of `main` and verify the whole merge in one step: `git diff <release branch head>` against the merged tree must be empty, since nothing but the release branch should have reached `main`.
+- `gh pr merge --squash` names the squash commit after the **branch's commit**, not the pull request title. On a backmerge branch that commit is the merge, so its second parent's subject wins: 1.0.0's backmerge landed as `chore(release): prepare 1.0.0 (#33) (#34)` instead of naming the backmerge. Pass `--subject` for anything but a single-commit branch. The `protect-branches` ruleset blocks the force-push that would relabel it afterwards.
+- `gh pr checks --watch` after `gh pr update-branch` can report the **previous** head's finished run as passing, so it exits green while the real run is still queued. Read `headRefOid` from the pull request and watch the run whose `headSha` matches it (`gh run list --branch <branch>`).
+
 ## Vendored skills: deliberate deviations from upstream (2026-10-12)
 
 - `.agents/skills/*` are vendored copies: 17 from `mattpocock/skills` (`skills/<category>/<skill>/`, category is `engineering` except `grilling`, `wait-what`, and `writing-for-agents`, which are `productivity`), and `humanizer` from the root of `blader/humanizer`. Refresh by replacing each directory's files from upstream `main`.
