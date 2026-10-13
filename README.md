@@ -70,7 +70,7 @@ The rule covers opencode's own `/` menu too:
   menu.
 - Typing more characters in that first word can open the menu again.
 
-### Chord shortcut
+### Keyboard shortcut
 
 `ctrl+s` by default opens the command palette without typing `/`. OpenCode
 uses `ctrl+k` to delete to the end of the input line, so the plugin cannot use
@@ -79,7 +79,7 @@ the `hotkey` option below.
 
 ### The `hotkey` option
 
-The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
+The shortcut takes a single opencode keybind and defaults to `ctrl+s`:
 
 ```json
 {
@@ -87,9 +87,13 @@ The chord accepts any valid opencode keybind string and defaults to `ctrl+s`:
 }
 ```
 
-If the key is already bound in your effective keybinds, or the value is not a
-valid keybind, the plugin shows a warning toast and skips the chord. The `/`
-menu keeps working.
+It has to be one keypress with a modifier held, so `ctrl+shift+k` works. `k+k`
+is two keys in a row, and a bare `k`, `space`, or `escape` would swallow that
+key as you type.
+
+If the key is already bound in your effective keybinds, or it cannot be a
+shortcut, the plugin shows a warning toast naming the reason and leaves the
+shortcut off. The `/` menu keeps working.
 
 ## opencode version requirement
 
@@ -159,10 +163,11 @@ one user-level, one project-level, and one built-in skill.
 10. Press `ctrl+s`, or your configured hotkey. The command palette opens with
     the same rows.
 11. Set `hotkey` to a key you already bind (for example `ctrl+p`) and restart.
-    A warning toast appears, the chord does nothing, and the `/` menu still
-    works.
-12. Set `hotkey` to a value that is not a keybind (for example `k+k`) and
-    restart. Same warn-and-skip behavior.
+    A toast reads `hotkey "ctrl+p" will not work, it is already bound`, the
+    key does what it did before, and the `/` menu still works.
+12. Set `hotkey` to `k+k`, restart, and do it again with a bare `k`. The
+    toasts read `it is more than one key` and `single keys are not allowed`,
+    and typing `k` still reaches the prompt.
 
 ## Listing the plugin
 

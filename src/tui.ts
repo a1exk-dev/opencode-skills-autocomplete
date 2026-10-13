@@ -1,5 +1,6 @@
 import type {
     KeyEvent,
+    KeyLike,
     TuiPlugin,
     TuiPluginApi,
 } from "@opencode-ai/plugin/tui";
@@ -38,8 +39,7 @@ function parseHotkey(
     const value = options?.hotkey;
     if (value === undefined) return { ok: true, hotkey: DEFAULT_HOTKEY };
     if (typeof value !== "string")
-        return { ok: false, error: "hotkey must be a string" };
-    // Keybind validity is decided by keymap registration, per spec an invalid value is a registration failure (warn+skip)
+        return { ok: false, error: "it must be text" };
     return { ok: true, hotkey: value.trim() };
 }
 
@@ -73,6 +73,35 @@ function pasteText(name: string): string {
 
 const PALETTE_COMMAND = "command.palette.show";
 
+// The host reads a keybind as a run of keypresses, so it accepts values this
+// plugin cannot use: "k+k" and "notakey" are runs that swallow their own first
+// key, and a bare "k" or "space" binds a key the prompt needs. A usable value
+// is one keypress with a modifier held. `match` is the host's canonical form
+// of it, so "Ctrl+K" and "ctrl+k", or "alt+k" and "meta+k", compare equal.
+type KeybindResult =
+    | { ok: true; match: string }
+    | { ok: false; reason: string };
+
+function readKeybind(
+    keymap: Pick<TuiPluginApi["keymap"], "parseKeySequence">,
+    key: KeyLike,
+): KeybindResult {
+    let parts: ReturnType<typeof keymap.parseKeySequence>;
+    try {
+        parts = keymap.parseKeySequence(key);
+    } catch {
+        parts = [];
+    }
+    if (parts.length === 0)
+        return { ok: false, reason: "opencode does not know that key" };
+    if (parts.length > 1)
+        return { ok: false, reason: "it is more than one key" };
+    const [{ stroke, match }] = parts;
+    if (!(stroke.ctrl || stroke.shift || stroke.meta || stroke.super))
+        return { ok: false, reason: "single keys are not allowed" };
+    return { ok: true, match };
+}
+
 function chordBinding(
     api: Pick<TuiPluginApi, "keymap" | "tuiConfig" | "ui">,
     options: Record<string, unknown> | undefined,
@@ -81,33 +110,28 @@ function chordBinding(
     if (!parsed.ok) {
         api.ui.toast({
             variant: "warning",
-            message: `${parsed.error}; chord skipped, the / menu still works`,
+            message: `hotkey will not work, ${parsed.error}`,
         });
         return undefined;
     }
     const { keymap, tuiConfig } = api;
-    // ponytail: exact string compare misses case-variant duplicates like "Ctrl+K" vs "ctrl+k"; normalize via keymap.formatKey if that matters
-    if (
-        tuiConfig.keybinds.bindings.some(
-            (binding) => binding.key === parsed.hotkey,
-        )
-    ) {
+    const keybind = readKeybind(keymap, parsed.hotkey);
+    if (!keybind.ok) {
         api.ui.toast({
             variant: "warning",
-            message: `hotkey "${parsed.hotkey}" is already bound; chord skipped, the / menu still works`,
+            message: `hotkey "${parsed.hotkey}" will not work, ${keybind.reason}`,
         });
         return undefined;
     }
-    let parts: readonly unknown[];
-    try {
-        parts = keymap.parseKeySequence(parsed.hotkey);
-    } catch {
-        parts = [];
-    }
-    if (parts.length === 0) {
+    if (
+        tuiConfig.keybinds.bindings.some((binding) => {
+            const bound = readKeybind(keymap, binding.key);
+            return bound.ok && bound.match === keybind.match;
+        })
+    ) {
         api.ui.toast({
             variant: "warning",
-            message: `hotkey "${parsed.hotkey}" is not a valid keybind; chord skipped, the / menu still works`,
+            message: `hotkey "${parsed.hotkey}" will not work, it is already bound`,
         });
         return undefined;
     }
