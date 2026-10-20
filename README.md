@@ -1,5 +1,10 @@
 # opencode-skills-autocomplete
 
+> [!IMPORTANT]
+> This plugin does not support opencode 2.x, and no 2.x version is planned.
+> opencode 2.x handles skills itself: type `@` in the prompt to pick one.
+> The 1.x line, for opencode 1.15.6 and newer, may still get bug fixes.
+
 An [opencode](https://opencode.ai) plugin that lists every available skill in
 the `/` menu. After selecting a skill, type a standalone `/` to open a
 searchable skill list and add another one. Selecting a skill inserts `/name `
@@ -107,8 +112,8 @@ menu with no skill rows, so check your opencode version first.
 
 This plugin does not run on opencode 2.x, which renames the plugin contract.
 opencode 2.x installs the plugin, loads it, and then shows a "Plugin failed"
-toast. Supporting 2.x needs a rewrite against the new contract and will come in
-a later major version of this plugin. There is no date for it.
+toast. No 2.x version of this plugin is planned. On opencode 2.x, use its
+built-in `@` skill mentions instead.
 
 1.0.0 is the last release to add opencode 1.x support. From here the 1.x line
 takes bug fixes only. The
