@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 (2026-10-20)
+
+1.0.1 changes no code. It corrects the plan that 1.0.0 announced: there will be
+no version of this plugin for opencode 2.x, because opencode 2.x handles skills
+itself through `@` mentions in the prompt. The README now says so at the top.
+The 1.x line may still get bug fixes.
+
 ## 1.0.0 (2026-10-13)
 
 1.0.0 is the last release to add support for opencode 1.x, and adds no new
